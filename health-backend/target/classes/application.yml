@@ -1,0 +1,39 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: health-platform
+  datasource:
+    url: jdbc:sqlite:health.db
+    driver-class-name: org.sqlite.JDBC
+  servlet:
+    encoding:
+      charset: UTF-8
+      force: true
+      enabled: true
+  sql:
+    init:
+      mode: always # Initialize schema on start
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  mapper-locations: classpath:mapper/*.xml
+
+# Sa-Token Configuration
+sa-token:
+  token-name: satoken
+  timeout: 2592000
+  active-timeout: -1
+  is-share: true
+  token-style: uuid
+  is-log: true
+
+# Springdoc Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html

@@ -1,0 +1,104 @@
+:root {
+  /* Colors - Modern Health Palette */
+  --primary-color: #4ADE80;
+  --primary-light: #F0FDF4;
+  --secondary-color: #3B82F6;
+  --secondary-light: #EFF6FF;
+  --accent-color: #F87171;
+  --accent-light: #FEF2F2;
+  --purple-color: #A78BFA;
+  --purple-light: #F5F3FF;
+
+  --bg-main: #F8FAFC;
+  --bg-card: #FFFFFF;
+
+  --text-main: #1E293B;
+  --text-muted: #64748B;
+  --text-light: #94A3B8;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 12px;
+  --space-md: 32px;
+  --space-lg: 48px;
+  --space-xl: 64px;
+  --space-section: 100px;
+
+  /* Borders & Shadows */
+  --radius-card: 28px;
+  --radius-inner: 20px;
+  --radius-input: 14px;
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  --shadow-premium: 0 25px 50px -12px rgba(15, 23, 42, 0.08);
+
+  /* Apple Style Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Helvetica Neue", sans-serif;
+}
+
+/* Global Overrides */
+* {
+  font-family: var(--font-family) !important;
+}
+
+body {
+  background-color: var(--bg-main) !important;
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.011em;
+}
+
+/* Premium Element Plus Overrides */
+.el-card {
+  border: none !important;
+  border-radius: var(--radius-card) !important;
+  box-shadow: var(--shadow-premium) !important;
+  background-color: var(--bg-card) !important;
+}
+
+.el-table {
+  --el-table-border-color: #F1F5F9;
+  --el-table-header-bg-color: #F8FAFC;
+  border-radius: var(--radius-inner);
+  overflow: hidden;
+}
+
+.el-input__wrapper,
+.el-textarea__inner {
+  box-shadow: 0 0 0 1px #E2E8F0 inset !important;
+  border-radius: var(--radius-input) !important;
+  transition: all 0.2s ease !important;
+}
+
+.el-input__wrapper.is-focus {
+  box-shadow: 0 0 0 1px var(--primary-color) inset !important;
+}
+
+.el-button.is-round {
+  border-radius: 100px !important;
+}
+
+/* Premium Card Class */
+.premium-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-premium) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  padding: var(--space-lg);
+}
+
+.premium-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 25px 30px -5px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Widget Variants */
+.widget-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.widget-gradient {
+  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  color: white;
+}
