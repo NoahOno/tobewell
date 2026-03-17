@@ -1,0 +1,41 @@
+# IDEs and Editors
+.idea/
+*.iml
+.vscode/
+.settings/
+.project/
+.classpath/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Frontend (Node.js)
+**/node_modules/
+**/dist/
+**/build/
+**/coverage/
+.eslintcache
+.stylelintcache
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm/
+
+# Backend (Java/Maven)
+**/target/
+health-backend/health.db
+*.db
+*.sqlite
+*.class
+
+# Sisyphus/Other tools
+.sisyphus/
+
+# Local configuration files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
