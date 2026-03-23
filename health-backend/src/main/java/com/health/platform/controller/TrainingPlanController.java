@@ -37,6 +37,12 @@ public class TrainingPlanController {
     @Autowired
     private TrainingMapper trainingMapper;
 
+    @Autowired
+    private com.health.platform.mapper.DailyScheduleMapper scheduleMapper;
+
+    @Autowired
+    private com.health.platform.service.ScheduleService scheduleService;
+
     @Operation(summary = "Get user's training plans")
     @GetMapping("/list")
     public Result<List<TrainingPlan>> getPlans() {
@@ -62,10 +68,6 @@ public class TrainingPlanController {
     public Result<Void> save(@RequestBody TrainingPlan plan) {
         Integer userId = StpUtil.getLoginIdAsInt();
         plan.setUserId(userId);
-        
-        if ("ACTIVE".equals(plan.getStatus())) {
-            archiveActivePlans(userId);
-        }
 
         if (plan.getId() == null) {
             trainingMapper.insert(plan);
@@ -76,13 +78,7 @@ public class TrainingPlanController {
     }
 
     private void archiveActivePlans(Integer userId) {
-        List<TrainingPlan> activePlans = trainingMapper.selectList(new LambdaQueryWrapper<TrainingPlan>()
-                .eq(TrainingPlan::getUserId, userId)
-                .eq(TrainingPlan::getStatus, "ACTIVE"));
-        for (TrainingPlan activePlan : activePlans) {
-            activePlan.setStatus("ARCHIVED");
-            trainingMapper.updateById(activePlan);
-        }
+        // Obsolete functionality, user requested to support multiple plans at the same time
     }
 
     @Operation(summary = "Delete a training plan permanently")
@@ -105,6 +101,10 @@ public class TrainingPlanController {
         } else {
             // Private plan -> Hard delete (only if owner)
             if (plan.getUserId().equals(userId)) {
+                // Delete related pending schedules
+                scheduleMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.health.platform.entity.DailySchedule>()
+                        .eq(com.health.platform.entity.DailySchedule::getPlanId, id)
+                        .eq(com.health.platform.entity.DailySchedule::getStatus, "PENDING"));
                 trainingMapper.deleteById(id);
             }
         }
@@ -120,6 +120,11 @@ public class TrainingPlanController {
         if (plan != null && userId.equals(plan.getUserId())) {
             plan.setIsSubscribed(false);
             trainingMapper.updateById(plan);
+            
+            // Delete related pending schedules when unsubscribing
+            scheduleMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.health.platform.entity.DailySchedule>()
+                    .eq(com.health.platform.entity.DailySchedule::getPlanId, id)
+                    .eq(com.health.platform.entity.DailySchedule::getStatus, "PENDING"));
         }
         return Result.success();
     }
@@ -179,13 +184,18 @@ public class TrainingPlanController {
             // Update existing instance
             existing.setIsSubscribed(true);
             if (req != null && Boolean.TRUE.equals(req.getActivate())) {
-                archiveActivePlans(userId);
                 existing.setStatus("ACTIVE");
             }
             if (req != null && req.getStartDate() != null) {
                 existing.setStartDate(req.getStartDate());
             }
             trainingMapper.updateById(existing);
+            
+            // Delete old future schedules and regenerate them
+            com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<com.health.platform.entity.DailySchedule> deleteWrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
+            deleteWrapper.eq("plan_id", existing.getId());
+            // In a real application, you might want to preserve COMPLETED tasks, but for a fresh restart, we clear it:
+            scheduleService.generateSchedule(existing, req != null ? req.getWeeklyDays() : null);
             return Result.success();
         }
 
@@ -205,13 +215,16 @@ public class TrainingPlanController {
         clone.setIsSubscribed(true);
         
         if (req != null && Boolean.TRUE.equals(req.getActivate())) {
-            archiveActivePlans(userId);
             clone.setStatus("ACTIVE");
         } else {
             clone.setStatus("PLANNING"); // Reset status
         }
         
         trainingMapper.insert(clone);
+        
+        List<String> days = (req != null && req.getWeeklyDays() != null) ? req.getWeeklyDays() : null;
+        scheduleService.generateSchedule(clone, days);
+
         return Result.success();
     }
 }

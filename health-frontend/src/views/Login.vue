@@ -59,8 +59,16 @@ const handleLogin = async () => {
   try {
     const res: any = await request.post('/auth/login', loginForm)
     localStorage.setItem('token', res.data)
-    ElMessage.success('登录成功，准备就绪')
-    router.push('/app/dashboard')
+    
+    // Fetch info to determine redirect
+    const infoRes: any = await request.get('/auth/info')
+    if (infoRes.data.role === 'ADMIN') {
+      ElMessage.success('管理员登录成功，进入控制中心')
+      router.push('/admin')
+    } else {
+      ElMessage.success('登录成功，准备就绪')
+      router.push('/app/dashboard')
+    }
   } catch (err) {
     console.error(err)
   } finally {

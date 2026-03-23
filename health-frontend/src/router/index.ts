@@ -87,6 +87,28 @@ const routes: Array<RouteRecordRaw> = [
                 component: () => import('../views/Dashboard.vue')
             },
         ]
+    },
+    {
+        path: '/admin',
+        component: () => import('../views/admin/AdminLayout.vue'),
+        redirect: '/admin/users',
+        children: [
+            {
+                path: 'users',
+                name: 'UserAdmin',
+                component: () => import('../views/admin/UserAdmin.vue')
+            },
+            {
+                path: 'content',
+                name: 'ContentAdmin',
+                component: () => import('../views/admin/ContentAdmin.vue')
+            },
+            {
+                path: 'training',
+                name: 'TrainingAdmin',
+                component: () => import('../views/admin/TrainingAdmin.vue')
+            }
+        ]
     }
 ]
 

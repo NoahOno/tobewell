@@ -9,18 +9,8 @@
 
     <div v-loading="loading" class="content-container">
       <el-tabs v-model="activeTab" class="collection-tabs">
-        <el-tab-pane label="训练计划" name="PLAN">
-          <div v-if="collectedPlans.length > 0" class="collection-grid">
-            <div v-for="item in collectedPlans" :key="item.id" class="collection-card premium-card">
-              <div class="card-type-tag">训练计划</div>
-              <h3 class="item-title">{{ item.targetTitle || '未命名计划' }}</h3>
-              <div class="item-footer">
-                <span class="collect-time">{{ new Date(item.createTime).toLocaleDateString() }} 收藏</span>
-                <el-button link type="danger" @click="handleUncollect(item)">取消收藏</el-button>
-              </div>
-            </div>
-          </div>
-          <el-empty v-else description="暂无收藏的训练计划" />
+        <el-tab-pane label="社区帖子" name="POST">
+          <el-empty description="收藏帖子功能开发中..." />
         </el-tab-pane>
         
         <el-tab-pane label="健康知识" name="NEWS">
@@ -36,15 +26,14 @@ import { ref, onMounted } from 'vue'
 import request from '../api/request'
 import { ElMessage } from 'element-plus'
 
-const activeTab = ref('PLAN')
-const collectedPlans = ref<any[]>([])
+const activeTab = ref('POST')
 const loading = ref(false)
 
 const fetchCollections = async () => {
+  // Currently just a placeholder for future community content
   loading.value = true
   try {
-    const res: any = await request.get('/interaction/collections?type=PLAN')
-    collectedPlans.value = res.data
+    // const res: any = await request.get('/interaction/collections?type=' + activeTab.value)
   } catch (err) {
     console.error(err)
   } finally {

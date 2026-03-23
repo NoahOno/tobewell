@@ -133,7 +133,7 @@
         <div class="detail-section">
           <h4>常见错误</h4>
           <ul class="error-list">
-            <li v-for="(err, i) in currentEx.commonErrors" :key="i">{{ err }}</li>
+            <li v-for="(err, i) in currentEx.commonErrorsList" :key="i">{{ err }}</li>
           </ul>
         </div>
         
@@ -151,8 +151,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { Search, VideoPlay } from '@element-plus/icons-vue'
+import request from '../api/request'
 
 const props = defineProps({
   selectMode: { type: Boolean, default: false }
@@ -160,17 +161,8 @@ const props = defineProps({
 
 const emit = defineEmits(['select'])
 
-// Mock Data for Exercises
-const EXERCISES_DB = [
-  { id: 1, name: '深蹲 (Squat)', muscle: '腿部', type: '力量', equipment: '无器械', difficulty: '初级', instruction: '双脚打开与肩同宽，腰背挺直，下蹲至大腿与地面平行。', commonErrors: ['膝盖内扣', '弯腰驼背', '重心不稳'], recommendedSets: '3-4组，每组12-15次' },
-  { id: 2, name: '平板支撑 (Plank)', muscle: '核心', type: '力量', equipment: '无器械', difficulty: '初级', instruction: '手肘撑地，身体呈一条直线，收紧腹部和臀部。', commonErrors: ['塌腰', '撅屁股', '低头或仰头'], recommendedSets: '3-4组，每组30-60秒' },
-  { id: 3, name: '开合跳 (Jumping Jacks)', muscle: '全身', type: '有氧', equipment: '无器械', difficulty: '初级', instruction: '跳跃时双脚分开，同时双手举过头顶击掌，落地时并拢。', commonErrors: ['落地过重', '手臂伸不直'], recommendedSets: '3组，每组30-45秒' },
-  { id: 4, name: '波比跳 (Burpees)', muscle: '全身', type: '有氧', equipment: '无器械', difficulty: '高级', instruction: '下蹲、后踢腿成俯卧撑姿势，完成一个俯卧撑后收腿向上跳跃。', commonErrors: ['核心没有收紧', '跳跃高度不够'], recommendedSets: '3组，每组10-15次' },
-  { id: 5, name: '杠铃卧推 (Bench Press)', muscle: '胸部', type: '力量', equipment: '杠铃', difficulty: '中级', instruction: '平躺在长椅上，双手握住杠铃，缓慢下放至胸口，然后推起。', commonErrors: ['手腕弯曲', '腰部过度反弓', '下放速度过快'], recommendedSets: '4组，每组8-12次' },
-  { id: 6, name: '哑铃飞鸟 (Dumbbell Flyes)', muscle: '胸部', type: '力量', equipment: '哑铃', difficulty: '中级', instruction: '仰卧，双手持哑铃，手臂微屈，像拥抱一棵大树一样向外展开。', commonErrors: ['手臂伸得过直', '下放幅度过大导致肩膀受伤'], recommendedSets: '3组，每组10-15次' },
-  { id: 7, name: '引体向上 (Pull-ups)', muscle: '背部', type: '力量', equipment: '单杠', difficulty: '高级', instruction: '双手握住单杠，收紧核心，背部发力将身体向上拉起，直到下巴过杠。', commonErrors: ['利用惯性甩动身体', '手臂发力过多'], recommendedSets: '4组，每组力竭' },
-  { id: 8, name: '哑铃划船 (Dumbbell Row)', muscle: '背部', type: '力量', equipment: '哑铃', difficulty: '中级', instruction: '单膝跪在长椅上，另一只手持哑铃向后上方拉起，背部发力。', commonErrors: ['身体过度扭转', '依靠手臂力量拉起'], recommendedSets: '4组，每组10-12次' },
-]
+const exercises = ref<any[]>([])
+const loading = ref(false)
 
 const muscles = ['全部', '胸部', '背部', '腿部', '核心', '全身', '上肢', '下肢']
 const types = ['全部', '力量', '有氧', '拉伸']
@@ -190,25 +182,37 @@ const currentEx = ref<any>(null)
 
 const toggleFilter = (key: keyof typeof searchQuery, val: string) => {
   searchQuery[key] = val
+  handleSearch()
 }
 
-const filteredExercises = computed(() => {
-  return EXERCISES_DB.filter(ex => {
-    if (searchQuery.keyword && !ex.name.includes(searchQuery.keyword)) return false
-    if (searchQuery.muscle !== '全部' && ex.muscle !== searchQuery.muscle) return false
-    if (searchQuery.type !== '全部' && ex.type !== searchQuery.type) return false
-    if (searchQuery.equipment !== '全部' && ex.equipment !== searchQuery.equipment) return false
-    if (searchQuery.difficulty !== '全部' && ex.difficulty !== searchQuery.difficulty) return false
-    return true
-  })
-})
+const fetchExercises = async () => {
+    loading.value = true
+    try {
+        const res: any = await request.get('/exercise/list', { params: searchQuery })
+        exercises.value = res.data
+    } finally {
+        loading.value = false
+    }
+}
+
+const filteredExercises = computed(() => exercises.value)
 
 const handleSearch = () => {
-  // Triggers computed re-evaluation automatically
+  fetchExercises()
 }
 
 const openDetail = (ex: any) => {
   currentEx.value = ex
+  // Process commonErrors if it's a string
+  if (typeof currentEx.value.commonErrors === 'string') {
+      try {
+          currentEx.value.commonErrorsList = JSON.parse(currentEx.value.commonErrors)
+      } catch (e) {
+          currentEx.value.commonErrorsList = []
+      }
+  } else {
+      currentEx.value.commonErrorsList = currentEx.value.commonErrors || []
+  }
   detailVisible.value = true
 }
 
@@ -216,6 +220,8 @@ const handleSelect = (ex: any) => {
   emit('select', ex)
   detailVisible.value = false
 }
+
+onMounted(fetchExercises)
 </script>
 
 <style scoped>

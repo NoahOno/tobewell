@@ -11,10 +11,13 @@
         class="top-menu"
         @select="handleTopMenuSelect"
       >
-        <el-menu-item index="explore">探索</el-menu-item>
-        <el-menu-item index="training">训练</el-menu-item>
-        <el-menu-item index="community">社区</el-menu-item>
-        <el-menu-item index="mine">我的</el-menu-item>
+        <template v-if="userInfo.role !== 'ADMIN'">
+          <el-menu-item index="explore">探索</el-menu-item>
+          <el-menu-item index="training">训练日程</el-menu-item>
+          <el-menu-item index="community">社区</el-menu-item>
+          <el-menu-item index="mine">我的</el-menu-item>
+        </template>
+        <el-menu-item v-else index="admin">系统管理</el-menu-item>
       </el-menu>
       <div class="header-right">
         <el-dropdown @command="handleCommand">
@@ -35,14 +38,18 @@
     <el-container class="sub-container">
       <el-aside v-if="activeTopModule !== 'community'" width="220px" class="aside">
         <el-menu
-          :default-active="route.path"
-          router
+          :default-active="activeSidebarItem"
           class="sidebar-menu"
+          @select="handleSidebarSelect"
         >
           <template v-if="activeTopModule === 'explore'">
-            <el-menu-item index="/app/explore">
+            <el-menu-item index="/app/explore?tab=plans">
               <el-icon><Collection /></el-icon>
-              <span>训练计划库</span>
+              <span>训练计划</span>
+            </el-menu-item>
+            <el-menu-item index="/app/explore?tab=courses">
+              <el-icon><Timer /></el-icon>
+              <span>单次课程</span>
             </el-menu-item>
             <el-menu-item index="/app/exercises">
               <el-icon><Bicycle /></el-icon>
@@ -51,9 +58,21 @@
           </template>
 
           <template v-else-if="activeTopModule === 'training'">
-            <el-menu-item index="/app/training">
+            <el-menu-item index="/app/training?tab=calendar">
               <el-icon><Calendar /></el-icon>
-              <span>我的训练</span>
+              <span>训练日程</span>
+            </el-menu-item>
+            <el-menu-item index="/app/training?tab=plans">
+              <el-icon><Collection /></el-icon>
+              <span>训练管理</span>
+            </el-menu-item>
+            <el-menu-item index="/app/training?tab=favorites">
+              <el-icon><Star /></el-icon>
+              <span>想练清单</span>
+            </el-menu-item>
+            <el-menu-item index="/app/training?tab=created">
+              <el-icon><EditPen /></el-icon>
+              <span>我的创建</span>
             </el-menu-item>
           </template>
 
@@ -89,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Odometer, MessageBox, TrendCharts, EditPen, Calendar, User, Timer, Aim, Trophy, Lightning, Collection, Star, Bicycle } from '@element-plus/icons-vue'
 import request from '../api/request'
@@ -101,10 +120,11 @@ const userInfo = ref<any>({})
 const activeTopModule = ref('mine')
 
 watch(() => route.path, (path) => {
-  if (path.includes('/community')) activeTopModule.value = 'community'
+  if (path.includes('/admin')) activeTopModule.value = 'admin'
+  else if (path.includes('/community')) activeTopModule.value = 'community'
   else if (path.includes('/explore') || path.includes('/exercises')) activeTopModule.value = 'explore'
   else if (path.includes('/training')) activeTopModule.value = 'training'
-  else if (path.includes('/mine') || path.includes('/dashboard') || path.includes('/collections') || path.includes('/records') || path.includes('/profile')) {
+  else if (path.includes('/mine') || path.includes('/dashboard') || path.includes('/records') || path.includes('/profile')) {
     activeTopModule.value = 'mine'
   }
 }, { immediate: true })
@@ -116,9 +136,11 @@ const handleTopMenuSelect = (val: string) => {
   } else if (val === 'explore') {
     router.push('/app/explore')
   } else if (val === 'training') {
-    router.push('/app/training')
+    router.push('/app/training?tab=calendar')
   } else if (val === 'mine') {
-    router.push('/app/dashboard') // Redirect mine directly to dashboard
+    router.push('/app/dashboard')
+  } else if (val === 'admin') {
+    router.push('/admin')
   }
 }
 
@@ -126,6 +148,10 @@ const fetchUserInfo = async () => {
   try {
     const res: any = await request.get('/auth/info')
     userInfo.value = res.data
+    // If admin lands on regular app routes, redirect to admin center
+    if (res.data.role === 'ADMIN' && route.path.startsWith('/app')) {
+      router.push('/admin')
+    }
   } catch (err) {
     console.error(err)
   }
@@ -141,6 +167,20 @@ const handleCommand = (command: string) => {
     activeTopModule.value = 'mine'
     router.push('/app/profile')
   }
+}
+
+const activeSidebarItem = computed(() => {
+  if (route.path === '/app/training') {
+    return route.query.tab ? `/app/training?tab=${route.query.tab}` : '/app/training?tab=calendar'
+  }
+  if (route.path === '/app/explore') {
+    return route.query.tab ? `/app/explore?tab=${route.query.tab}` : '/app/explore?tab=plans'
+  }
+  return route.path
+})
+
+const handleSidebarSelect = (index: string) => {
+  router.push(index)
 }
 
 onMounted(() => {

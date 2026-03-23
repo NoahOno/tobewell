@@ -30,7 +30,9 @@
         <!-- Training Plans (default module) -->
         <template v-if="activeModuleKey === 'training'">
           <div class="library-toolbar">
-            <h3 class="section-title">计划与方案库</h3>
+            <div style="display: flex; gap: 16px; align-items: center;">
+              <h3 class="section-title">健身运动库 | {{ activeTrainingTab === 'plans' ? '系列计划' : '单次课程' }}</h3>
+            </div>
             <!-- Expandable Filters -->
             <div class="filters-container">
               <el-select v-model="activeModuleKey" placeholder="类别" size="small" class="filter-item" @change="switchModuleByKey">
@@ -73,37 +75,79 @@
             </div>
           </div>
 
-          <div v-if="filteredPlans.length === 0 && !loading" class="empty-module">
-            <el-empty description="暂无符合条件的计划" />
-          </div>
+          <!-- Switch between Plans Grid and Courses Grid -->
+          <template v-if="activeTrainingTab === 'plans'">
+            <div v-if="filteredPlans.length === 0 && !loading" class="empty-module">
+              <el-empty description="暂无符合条件的计划" />
+            </div>
 
-          <div class="card-grid">
-            <div v-for="plan in filteredPlans" :key="plan.id" class="module-card premium-card training-card" @click="openDetail(plan)">
-              <div class="card-header-tags">
-                <el-tag v-if="isActive(plan)" size="small" type="success" effect="dark" style="border:none">正在训练</el-tag>
-                <el-tag v-if="plan.goal" size="small" effect="dark" :color="getGoalColor(plan.goal)" style="border:none">{{ plan.goal }}</el-tag>
-                <el-tag v-if="plan.difficulty" size="small" type="info">{{ plan.difficulty }}</el-tag>
-              </div>
-              <h3 class="card-title">{{ plan.title }}</h3>
-              <p class="card-desc">{{ (plan.description || '').slice(0, 80) }}...</p>
-              
-              <div class="plan-specs">
-                <div class="spec-item"><el-icon><Calendar /></el-icon> {{ plan.duration || '4周' }}</div>
-                <div class="spec-item"><el-icon><RefreshRight /></el-icon> {{ plan.frequency || '每周4天' }}</div>
-                <div class="spec-item"><el-icon><Location /></el-icon> {{ plan.scene || '居家' }}</div>
-                <div class="spec-item"><el-icon><UserFilled /></el-icon> {{ plan.audience || '新手适合' }}</div>
-              </div>
+            <div class="card-grid">
+              <div v-for="plan in filteredPlans" :key="plan.id" class="module-card premium-card training-card" @click="openDetail(plan)">
+                <div class="card-header-tags">
+                  <el-tag v-if="isActive(plan)" size="small" type="success" effect="dark" style="border:none">正在训练</el-tag>
+                  <el-tag v-if="plan.goal" size="small" effect="dark" :color="getGoalColor(plan.goal)" style="border:none">{{ plan.goal }}</el-tag>
+                  <el-tag v-if="plan.difficulty" size="small" type="info">{{ plan.difficulty }}</el-tag>
+                </div>
+                <h3 class="card-title">{{ plan.title }}</h3>
+                <p class="card-desc">{{ (plan.description || '').slice(0, 80) }}...</p>
+                
+                <div class="plan-specs">
+                  <div class="spec-item"><el-icon><Calendar /></el-icon> {{ plan.duration || '4周' }}</div>
+                  <div class="spec-item"><el-icon><RefreshRight /></el-icon> {{ plan.frequency || '每周4天' }}</div>
+                  <div class="spec-item"><el-icon><Location /></el-icon> {{ plan.scene || '居家' }}</div>
+                  <div class="spec-item"><el-icon><UserFilled /></el-icon> {{ plan.audience || '新手适合' }}</div>
+                </div>
 
-              <div class="card-actions">
-                <template v-if="isSubscribed(plan)">
-                  <el-button size="small" type="danger" plain round @click.stop="handleUnsubscribeClick(plan)">退订</el-button>
-                </template>
-                <template v-else>
-                  <el-button size="small" type="primary" plain round @click.stop="handleSubscribeClick(plan)">订阅</el-button>
-                </template>
+                <div class="card-actions">
+                  <el-button size="small" :type="isCollected(plan) ? 'warning' : 'default'" @click.stop="toggleCollect(plan)">
+                    <el-icon><Star v-if="!isCollected(plan)" /><StarFilled v-else /></el-icon> {{ isCollected(plan) ? '已想练' : '想练' }}
+                  </el-button>
+                  <template v-if="isSubscribed(plan)">
+                    <el-button size="small" type="success" plain round @click.stop="router.push('/app/training')">去训练</el-button>
+                  </template>
+                  <template v-else>
+                    <el-button size="small" type="primary" plain round @click.stop="openSubscribeConfig(plan)">加入训练计划</el-button>
+                  </template>
+                </div>
               </div>
             </div>
-          </div>
+          </template>
+
+          <template v-else-if="activeTrainingTab === 'courses'">
+            <div v-if="filteredCourses.length === 0 && !loading" class="empty-module">
+              <el-empty description="暂无符合条件的单次课程" />
+            </div>
+
+            <div class="card-grid">
+              <div v-for="course in filteredCourses" :key="course.id" class="module-card premium-card training-card" @click="openCourseDetail(course)">
+                <div class="card-header-tags">
+                  <el-tag v-if="isCourseSubscribed(course)" size="small" type="success" effect="dark" style="border:none">我的课程</el-tag>
+                  <el-tag v-if="course.category" size="small" effect="dark" color="#10b981" style="border:none">{{ course.category }}</el-tag>
+                  <el-tag v-if="course.difficulty" size="small" type="info">{{ course.difficulty }}</el-tag>
+                </div>
+                <h3 class="card-title">{{ course.title }}</h3>
+                <p class="card-desc">{{ (course.description || '').slice(0, 80) }}...</p>
+                
+                <div class="plan-specs">
+                  <div class="spec-item"><el-icon><Timer /></el-icon> {{ course.durationMinutes }} 分钟</div>
+                  <div class="spec-item"><el-icon><Location /></el-icon> 自由开练</div>
+                </div>
+
+                <div class="card-actions">
+                  <el-button size="small" :type="isCollected(course) ? 'warning' : 'default'" @click.stop="toggleCollect(course)">
+                    <el-icon><Star v-if="!isCollected(course)" /><StarFilled v-else /></el-icon> {{ isCollected(course) ? '已收藏' : '收藏' }}
+                  </el-button>
+                  <template v-if="isCourseSubscribed(course)">
+                    <el-button size="small" type="success" plain round @click.stop="router.push('/app/training?tab=courses')">我的课程</el-button>
+                  </template>
+                  <template v-else>
+                    <el-button size="small" type="primary" plain round @click.stop="openCourseSchedule(course)">加入训练计划</el-button>
+                  </template>
+                  <el-button size="small" type="primary" round @click.stop="startQuickCourse(course)">直接开练</el-button>
+                </div>
+              </div>
+            </div>
+          </template>
         </template>
 
         <!-- Other Health Modules -->
@@ -142,8 +186,8 @@
           <div class="section-title">计划目标</div>
           <p class="preview-desc">{{ detailedPlan.description || '帮助您在有限的时间内达到最佳的训练效果。' }}</p>
 
-          <div class="section-title">周结构预览 (示例)</div>
-          <div class="week-preview">
+          <div v-if="!detailedPlan.isCourse" class="section-title">周结构预览 (示例)</div>
+          <div v-if="!detailedPlan.isCourse" class="week-preview">
              <div class="day-row" v-for="(day, idx) in defaultWeekPreview" :key="idx">
                <div class="day-label">{{ day.name }}</div>
                <div class="day-content" :class="{'is-rest': day.type === '休息'}">{{ day.desc }}</div>
@@ -151,7 +195,7 @@
           </div>
 
           <div class="section-title">
-            动作示例 
+            {{ detailedPlan.isCourse ? '具体动作' : '动作示例' }}
           </div>
           <div class="demo-actions">
             <div 
@@ -190,17 +234,30 @@
         </div>
       </div>
 
-      <template #footer>
+    <template #footer>
         <div class="preview-footer">
-          <template v-if="isSubscribed(detailedPlan)">
-            <el-button type="danger" size="large" round @click="handleUnsubscribeClick(detailedPlan)">
-              退订
-            </el-button>
+          <el-button size="large" :type="isCollected(detailedPlan) ? 'warning' : 'default'" @click="toggleCollect(detailedPlan)">
+            <el-icon><Star v-if="!isCollected(detailedPlan)" /><StarFilled v-else /></el-icon> {{ isCollected(detailedPlan) ? '已加入想练' : '记入想练' }}
+          </el-button>
+
+          <template v-if="detailedPlan.isCourse">
+            <template v-if="isCourseSubscribed(detailedPlan)">
+              <el-button type="success" size="large" round @click="router.push('/app/training?tab=courses')">去我的课程</el-button>
+            </template>
+            <template v-else>
+              <el-button type="primary" size="large" plain round @click="openCourseSchedule(detailedPlan)">加入训练计划</el-button>
+            </template>
+            <el-button type="primary" size="large" round @click="startQuickCourse(detailedPlan); showPlanDetail=false">直接开练</el-button>
           </template>
           <template v-else>
-            <el-button type="primary" size="large" round @click="handleSubscribeClick(detailedPlan)">
-              订阅
-            </el-button>
+            <template v-if="isSubscribed(detailedPlan)">
+              <el-button type="success" size="large" round @click="router.push('/app/training')">去训练</el-button>
+            </template>
+            <template v-else>
+              <el-button type="primary" size="large" round @click="openSubscribeConfig(detailedPlan)">
+                加入训练计划
+              </el-button>
+            </template>
           </template>
         </div>
       </template>
@@ -218,16 +275,32 @@
             :disabled-date="(time: Date) => time.getTime() < Date.now() - 8.64e7"
           />
         </el-form-item>
-        <el-form-item label="每周训练日 (推荐按计划频率选择)">
+        <el-form-item label="建议与安排：" style="margin-bottom: 24px;">
+          <div style="background: #F8FAFC; padding: 12px; border-radius: 8px; font-size: 13px; color: #64748B; width: 100%;">
+            系统依据计划强度，建议 <strong>{{ targetSubscribePlan?.frequency || '每周 3 天' }}</strong> 的训练频率。已为您默认划定最佳训练日，您可以根据自己的作息进行微调。
+          </div>
+        </el-form-item>
+        <el-form-item label="微调每周训练日" style="margin-bottom: 24px;">
           <el-checkbox-group v-model="subscribeForm.weeklyDays">
-            <el-checkbox label="1">周一</el-checkbox>
-            <el-checkbox label="2">周二</el-checkbox>
-            <el-checkbox label="3">周三</el-checkbox>
-            <el-checkbox label="4">周四</el-checkbox>
-            <el-checkbox label="5">周五</el-checkbox>
-            <el-checkbox label="6">周六</el-checkbox>
-            <el-checkbox label="0">周日</el-checkbox>
+            <el-checkbox label="MONDAY">周一</el-checkbox>
+            <el-checkbox label="TUESDAY">周二</el-checkbox>
+            <el-checkbox label="WEDNESDAY">周三</el-checkbox>
+            <el-checkbox label="THURSDAY">周四</el-checkbox>
+            <el-checkbox label="FRIDAY">周五</el-checkbox>
+            <el-checkbox label="SATURDAY">周六</el-checkbox>
+            <el-checkbox label="SUNDAY">周日</el-checkbox>
           </el-checkbox-group>
+        </el-form-item>
+        
+        <el-form-item label="排期概览 (预览未来四周)">
+          <el-calendar v-model="subscribeForm.startDate" class="mini-preview-cal">
+            <template #date-cell="{ data }">
+              <div class="cal-cell-inner" :class="{ 'is-training-day': isTrainingDayPreview(data.day) }">
+                <span class="cal-day-num">{{ data.day.split('-').pop() }}</span>
+                <span v-if="isTrainingDayPreview(data.day)" class="cal-dot"></span>
+              </div>
+            </template>
+          </el-calendar>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -235,14 +308,39 @@
         <el-button type="primary" @click="confirmSubscribe">生成个人计划实例</el-button>
       </template>
     </el-dialog>
+    <!-- Course Schedule Dialog -->
+    <el-dialog v-model="courseScheduleDialogVisible" title="预约训练日期" width="450px" align-center>
+      <el-form label-position="top">
+        <el-form-item label="选择预约日期（可多选）">
+          <el-date-picker
+            v-model="courseScheduleDates"
+            type="dates"
+            placeholder="选择一个或多个日期"
+            style="width: 100%"
+            :disabled-date="(time: Date) => time.getTime() < Date.now() - 8.64e7"
+          />
+        </el-form-item>
+        <div style="background: #F0FDFA; padding: 12px; border-radius: 8px; font-size: 13px; color: #0D9488;">
+          <el-icon><InfoFilled /></el-icon> 该课程将作为单次任务添加至您所选日期的训练日历中。
+        </div>
+      </el-form>
+      <template #footer>
+        <el-button @click="courseScheduleDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="confirmCourseSchedule" :loading="schedulingCourse">确认预约</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import { Search, Plus, Calendar, Timer, User, RefreshRight, Location, UserFilled, Aim, VideoCamera } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
+import { Search, Plus, Calendar, Timer, User, RefreshRight, Location, UserFilled, Aim, VideoCamera, Star, StarFilled, InfoFilled } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import request from '../api/request'
+
+const router = useRouter()
+const route = useRoute()
 
 const healthModules = [
   { key: 'training', name: '运动训练', icon: '🏋️', subtitle: '发现并订阅专业训练计划', description: '包含各类有氧、力量、柔韧性训练计划' },
@@ -259,6 +357,11 @@ const activeModule = computed(() => healthModules.find(m => m.key === activeModu
 const loading = ref(false)
 const plans = ref<any[]>([])
 const myPlans = ref<any[]>([])
+
+const activeTrainingTab = computed(() => (route.query.tab as string) || 'plans')
+const courses = ref<any[]>([])
+const myCourses = ref<any[]>([])
+
 const showPlanDetail = ref(false)
 const detailedPlan = ref<any>(null)
 const searchQ = ref('')
@@ -268,8 +371,13 @@ const targetSubscribePlan = ref<any>(null)
 const intentActive = ref(false)
 const subscribeForm = reactive({
   startDate: new Date(),
-  weeklyDays: ['1', '3', '5'] // Default Mon/Wed/Fri
+  weeklyDays: ['MONDAY', 'WEDNESDAY', 'FRIDAY'] // Default Mon/Wed/Fri
 })
+
+const courseScheduleDialogVisible = ref(false)
+const courseScheduleDates = ref<Date[]>([])
+const schedulingCourse = ref(false)
+const targetScheduleCourse = ref<any>(null)
 
 const filterForm = reactive({
   goal: '',
@@ -295,6 +403,8 @@ const switchModuleByKey = (key: string) => {
   if (key === 'training') {
     fetchPlans()
     fetchMyPlans()
+    fetchCourses()
+    fetchMyCourses()
   }
 }
 
@@ -305,13 +415,52 @@ const fetchMyPlans = async () => {
   } catch(e) {}
 }
 
+// Collections logic
+const collectedPlanIds = ref<number[]>([])
+const collectedCourseIds = ref<number[]>([])
+
+const fetchCollections = async () => {
+  try {
+    const resPlan: any = await request.get('/interaction/collections?type=PLAN')
+    collectedPlanIds.value = resPlan.data.map((c: any) => c.targetId)
+    
+    const resCourse: any = await request.get('/interaction/collections?type=COURSE')
+    collectedCourseIds.value = resCourse.data.map((c: any) => c.targetId)
+  } catch(e) {}
+}
+
+const isCollected = (item: any) => {
+  if (item.isCourse || item.actionsJson) {
+      return collectedCourseIds.value.includes(item.id)
+  }
+  return collectedPlanIds.value.includes(item.id)
+}
+
+const toggleCollect = async (item: any) => {
+  const isCourseType = item.isCourse || item.actionsJson
+  const targetType = isCourseType ? 'COURSE' : 'PLAN'
+  const targetIdList = isCourseType ? collectedCourseIds : collectedPlanIds
+  
+  try {
+    if (isCollected(item)) {
+      await request.delete(`/interaction/collect?targetId=${item.id}&targetType=${targetType}`)
+      targetIdList.value = targetIdList.value.filter(id => id !== item.id)
+      ElMessage.success(isCourseType ? '已移出收藏' : '已移出想练')
+    } else {
+      await request.post('/interaction/collect', { targetId: item.id, targetType: targetType })
+      targetIdList.value.push(item.id)
+      ElMessage.success(isCourseType ? '收藏成功' : '已加入想练单')
+    }
+  } catch (e) {}
+}
+
 const getMyPlanMatch = (plan: any) => {
   return myPlans.value.find(p => p.sourceId === plan.id || p.title === plan.title)
 }
 
 const isSubscribed = (plan: any) => {
   const match = getMyPlanMatch(plan)
-  return match && match.isSubscribed !== false
+  return match && match.isSubscribed !== false && (match.status === 'ACTIVE' || match.status === 'PLANNING')
 }
 
 const isActive = (plan: any) => {
@@ -354,78 +503,67 @@ const filteredPlans = computed(() => {
   })
 })
 
-const handleSearch = () => fetchPlans()
-const clearSearch = () => { searchQ.value = ''; fetchPlans() }
-
-const handleSubscribeClick = async (plan: any) => {
+const fetchCourses = async () => {
   try {
-    await ElMessageBox.confirm(
-      '是否要将此计划设为当前执行的训练计划？',
-      '订阅提示',
-      {
-        confirmButtonText: '是',
-        cancelButtonText: '否',
-        type: 'info',
-        distinguishCancelAndClose: true,
-      }
-    )
-    // 选了“是” -> 冲突检查
-    const res: any = await request.get('/training/current')
-    if (res.data) {
-      // 有正在执行的计划，二次确认
-      try {
-        await ElMessageBox.confirm(
-          '目前已有正在执行的训练计划，是否要中断并切换为新的计划？',
-          '冲突确认',
-          {
-            confirmButtonText: '确认',
-            cancelButtonText: '取消',
-            type: 'warning'
-          }
-        )
-        // 确认
-        intentActive.value = true
-        openSubscribeConfig(plan)
-      } catch (cancelError) {
-        // 取消
-        intentActive.value = false
-        openSubscribeConfig(plan)
-      }
-    } else {
-      // 无正在执行的
-      intentActive.value = true
-      openSubscribeConfig(plan)
-    }
-  } catch (cancelAction: any) {
-    if (cancelAction === 'cancel') {
-      // 选了“否” - 跳过配置弹窗，直接默认订阅
-      intentActive.value = false
-      targetSubscribePlan.value = plan
-      subscribeForm.startDate = new Date()
-      subscribeForm.weeklyDays = ['1', '3', '5']
-      await confirmSubscribe()
-    }
-  }
+    const res: any = await request.get('/course/library', {
+      params: searchQ.value ? { keyword: searchQ.value } : {}
+    })
+    courses.value = res.data || []
+  } catch (e) {}
 }
 
-const handleUnsubscribeClick = async (plan: any) => {
+const fetchMyCourses = async () => {
   try {
-    await ElMessageBox.confirm('确定要退订该计划吗？', '退订确认', { type: 'warning' })
-    const match = getMyPlanMatch(plan)
-    if (match) {
-      await request.post(`/training/unsubscribe/${match.id}`)
-      ElMessage.success('已退订')
-      await fetchMyPlans()
-      if (detailedPlan.value && (detailedPlan.value.id === plan.id || detailedPlan.value.title === plan.title)) {
-         showPlanDetail.value = false
-      }
-    }
+    const res: any = await request.get('/course/my')
+    myCourses.value = res.data || []
   } catch(e) {}
+}
+
+const isCourseSubscribed = (course: any) => {
+  return myCourses.value.some(c => c.title === course.title)
+}
+
+const filteredCourses = computed(() => {
+  return courses.value.filter(c => {
+    if (filterForm.goal && (!c.category || !c.category.includes(filterForm.goal))) return false;
+    if (filterForm.difficulty && c.difficulty !== filterForm.difficulty) return false;
+    return true;
+  })
+})
+
+const handleSearch = () => {
+  fetchPlans()
+  fetchCourses()
+}
+const clearSearch = () => { searchQ.value = ''; handleSearch() }
+
+const isTrainingDayPreview = (dateStr: string) => {
+  const d = new Date(dateStr)
+  d.setHours(0,0,0,0)
+  const start = new Date(subscribeForm.startDate)
+  start.setHours(0,0,0,0)
+  
+  if (d.getTime() < start.getTime()) return false;
+  // Let's assume default 28 days for preview
+  if (d.getTime() > start.getTime() + 27 * 86400000) return false;
+  
+  const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY']
+  return subscribeForm.weeklyDays.includes(dayNames[d.getDay()]);
 }
 
 const openSubscribeConfig = (plan: any) => {
   targetSubscribePlan.value = plan
   subscribeDialogVisible.value = true
+  
+  // Set default weekly days based on frequency heuristic
+  const freq = plan.frequency || ''
+  if (freq.includes('2') || freq.includes('3')) {
+      subscribeForm.weeklyDays = ['MONDAY', 'WEDNESDAY', 'FRIDAY']
+  } else if (freq.includes('5') || freq.includes('6')) {
+      subscribeForm.weeklyDays = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY']
+  } else {
+      subscribeForm.weeklyDays = ['MONDAY', 'WEDNESDAY', 'FRIDAY', 'SUNDAY']
+  }
 }
 
 const confirmSubscribe = async () => {
@@ -433,18 +571,73 @@ const confirmSubscribe = async () => {
     await request.post(`/training/subscribe/${targetSubscribePlan.value.id}`, {
       startDate: subscribeForm.startDate,
       weeklyDays: subscribeForm.weeklyDays,
-      activate: intentActive.value
+      activate: true // The user wants to set it as active immediately and go to Training
     })
-    ElMessage.success(intentActive.value ? '计划配置完成，已设为当前训练内容！' : '订阅成功！已加入个人订阅库')
-    await fetchMyPlans()
+    ElMessage.success('已成功加入训练计划！')
     subscribeDialogVisible.value = false
     showPlanDetail.value = false
+    router.push('/app/training')
   } catch (e) {}
 }
 
 const openDetail = (plan: any) => {
   detailedPlan.value = plan
   showPlanDetail.value = true
+}
+
+const openCourseDetail = (course: any) => {
+  // We can reuse the same modal for preview with slight logic adjustments
+  detailedPlan.value = {
+    ...course,
+    isCourse: true,
+    duration: `${course.durationMinutes} 分钟`,
+    frequency: '单次训练',
+    audience: '自由安排',
+    goal: course.category
+  }
+  showPlanDetail.value = true
+}
+
+const subscribeCourse = async (course: any) => {
+  try {
+    // Legacy support, but we now prefer scheduling to daily
+    await request.post(`/course/subscribe/${course.id}`)
+    ElMessage.success('已加入您的个人课程库！')
+    fetchMyCourses()
+  } catch (e) {}
+}
+
+const openCourseSchedule = (course: any) => {
+  targetScheduleCourse.value = course
+  courseScheduleDates.value = []
+  courseScheduleDialogVisible.value = true
+}
+
+const confirmCourseSchedule = async () => {
+  if (courseScheduleDates.value.length === 0) {
+    ElMessage.warning('请至少选择一个日期')
+    return
+  }
+  schedulingCourse.value = true
+  try {
+    const formattedDates = courseScheduleDates.value.map(d => d.toISOString().split('T')[0])
+    await request.post('/daily/course', {
+      courseId: targetScheduleCourse.value.id,
+      dates: formattedDates
+    })
+    ElMessage.success('已成功预约，在日历中查看！')
+    courseScheduleDialogVisible.value = false
+    showPlanDetail.value = false
+    router.push('/app/training')
+  } catch (e) {} finally {
+    schedulingCourse.value = false
+  }
+}
+
+const startQuickCourse = async (course: any) => {
+  // Phase 4: will redirect to immersive training mode
+  // For now, fast-track to training page route mapping or mock start
+  router.push(`/app/training?tab=courses&start=${course.id}`)
 }
 
 // Helpers for preview
@@ -473,6 +666,9 @@ const getCardTheme = (cateStr: string) => {
 onMounted(() => {
   fetchPlans()
   fetchMyPlans()
+  fetchCourses()
+  fetchMyCourses()
+  fetchCollections()
 })
 </script>
 
@@ -708,4 +904,49 @@ onMounted(() => {
 }
 
 .preview-footer { display: flex; justify-content: center; gap: 16px; padding: 20px; border-top: 1px solid #F1F5F9; background: #fff; border-radius: 0 0 8px 8px; }
+
+/* Mini Preview Calendar */
+.mini-preview-cal {
+  border: 1px solid #E2E8F0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.mini-preview-cal :deep(.el-calendar__header) {
+  padding: 8px 12px;
+}
+.mini-preview-cal :deep(.el-calendar__body) {
+  padding: 0 12px 12px;
+}
+.mini-preview-cal :deep(.el-calendar-table .el-calendar-day) {
+  height: 40px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cal-cell-inner {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+}
+.is-training-day {
+  background: rgba(16, 185, 129, 0.1);
+  border-radius: 4px;
+}
+.is-training-day .cal-day-num {
+  font-weight: bold;
+  color: #10B981;
+}
+.cal-dot {
+  width: 4px;
+  height: 4px;
+  background: #10B981;
+  border-radius: 50%;
+  position: absolute;
+  bottom: 4px;
+}
 </style>

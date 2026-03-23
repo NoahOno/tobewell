@@ -201,3 +201,76 @@ VALUES
 (2, '骑行', 45, datetime('now', '-1 day')),
 (2, '游泳', 40, datetime('now', '-3 days')),
 (2, '力量训练', 60, datetime('now'));
+
+-- Daily Schedule Table (For Training Plan Execution)
+CREATE TABLE IF NOT EXISTS daily_schedule (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    source_type TEXT DEFAULT 'PLAN', -- 'PLAN' or 'COURSE'
+    plan_id INTEGER,
+    course_id INTEGER,
+    date DATE NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    actions TEXT,
+    status TEXT DEFAULT 'PENDING', -- PENDING, COMPLETED, SKIPPED
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES sys_user(id),
+    FOREIGN KEY (plan_id) REFERENCES training_plan(id)
+);
+
+-- Training Record Table (For Daily Schedule Check-in or Single Course Completion)
+CREATE TABLE IF NOT EXISTS training_record (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    source_type TEXT DEFAULT 'SCHEDULE', -- 'SCHEDULE' or 'COURSE'
+    source_id INTEGER NOT NULL,          -- daily_schedule(id) or course(id)
+    complete_duration INTEGER,
+    difficulty TEXT, -- TOO_EASY, GOOD, TOO_HARD
+    feeling TEXT,
+    record_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES sys_user(id)
+);
+
+-- Course Table (Single standalone workouts)
+CREATE TABLE IF NOT EXISTS course (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    description TEXT,
+    category TEXT,
+    difficulty TEXT,
+    duration_minutes INTEGER,
+    actions_json TEXT,
+    is_public BOOLEAN DEFAULT 0,
+    creator_id INTEGER,
+    cover_image TEXT,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (creator_id) REFERENCES sys_user(id)
+);
+-- Exercise Library Table
+CREATE TABLE IF NOT EXISTS exercise (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    muscle TEXT,
+    type TEXT,
+    equipment TEXT,
+    difficulty TEXT,
+    instruction TEXT,
+    common_errors TEXT, -- JSON string
+    recommended_sets TEXT,
+    image_url TEXT,
+    video_url TEXT,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Mock Data for Exercises
+INSERT OR IGNORE INTO exercise (id, name, muscle, type, equipment, difficulty, instruction, common_errors, recommended_sets)
+VALUES 
+(1, '深蹲 (Squat)', '腿部', '力量', '无器械', '初级', '双脚打开与肩同宽，腰背挺直，下蹲至大腿与地面平行。', '["膝盖内扣", "弯腰驼背", "重心不稳"]', '3-4组，每组12-15次'),
+(2, '平板支撑 (Plank)', '核心', '力量', '无器械', '初级', '手肘撑地，身体呈一条直线，收紧腹部和臀部。', '["塌腰", "撅屁股", "低头或仰头"]', '3-4组，每组30-60秒'),
+(3, '开合跳 (Jumping Jacks)', '全身', '有氧', '无器械', '初级', '跳跃时双脚分开，同时双手举过头顶击掌，落地时并拢。', '["落地过重", "手臂伸不直"]', '3组，每组30-45秒'),
+(4, '波比跳 (Burpees)', '全身', '有氧', '无器械', '高级', '下蹲、后踢腿成俯卧撑姿势，完成一个俯卧撑后收腿向上跳跃。', '["核心没有收紧", "跳跃高度不够"]', '3组，每组10-15次'),
+(5, '杠铃卧推 (Bench Press)', '胸部', '力量', '杠铃', '中级', '平躺在长椅上，双手握住杠铃，缓慢下放至胸口，然后推起。', '["手腕弯曲", "腰部过度反弓", "下放速度过快"]', '4组，每组8-12次'),
+(6, '哑铃飞鸟 (Dumbbell Flyes)', '胸部', '力量', '哑铃', '中级', '仰卧，双手持哑铃，手臂微屈，像拥抱一棵大树一样向外展开。', '["手臂伸得过直", "下放幅度过大导致肩膀受伤"]', '3组，每组10-15次'),
+(7, '引体向上 (Pull-ups)', '背部', '力量', '单杠', '高级', '双手握住单杠，收紧核心，背部发力将身体向上拉起，直到下巴过杠。', '["利用惯性甩动身体", "手臂发力过多"]', '4组，每组力竭'),
+(8, '哑铃划船 (Dumbbell Row)', '背部', '力量', '哑铃', '中级', '单膝跪在长椅上，另一只手持哑铃向后上方拉起，背部发力。', '["身体过度扭转", "依靠手臂力量拉起"]', '4组，每组10-12次');
