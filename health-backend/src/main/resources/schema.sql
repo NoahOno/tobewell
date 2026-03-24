@@ -274,3 +274,67 @@ VALUES
 (6, '哑铃飞鸟 (Dumbbell Flyes)', '胸部', '力量', '哑铃', '中级', '仰卧，双手持哑铃，手臂微屈，像拥抱一棵大树一样向外展开。', '["手臂伸得过直", "下放幅度过大导致肩膀受伤"]', '3组，每组10-15次'),
 (7, '引体向上 (Pull-ups)', '背部', '力量', '单杠', '高级', '双手握住单杠，收紧核心，背部发力将身体向上拉起，直到下巴过杠。', '["利用惯性甩动身体", "手臂发力过多"]', '4组，每组力竭'),
 (8, '哑铃划船 (Dumbbell Row)', '背部', '力量', '哑铃', '中级', '单膝跪在长椅上，另一只手持哑铃向后上方拉起，背部发力。', '["身体过度扭转", "依靠手臂力量拉起"]', '4组，每组10-12次');
+
+-- Activity System (Trending/Administration/Community Integration)
+-- The activity feature reuses daily_schedule + training_record for task execution.
+
+-- Activity Base Table
+CREATE TABLE IF NOT EXISTS activity (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
+    cover_image TEXT,
+    description_html TEXT,
+    start_time DATETIME NOT NULL,
+    end_time DATETIME,
+    template_type TEXT NOT NULL, -- 'PLAN' or 'COURSE'
+    template_id INTEGER NOT NULL, -- training_plan.id or course.id
+    required_days INTEGER NOT NULL DEFAULT 7,
+    pinned INTEGER DEFAULT 0, -- 1 pinned, 0 normal
+    status TEXT DEFAULT 'ONLINE', -- ONLINE/OFFLINE
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- User Participation Table
+CREATE TABLE IF NOT EXISTS activity_participation (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    activity_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    status TEXT DEFAULT 'APPLIED', -- APPLIED/COMPLETED/CANCELLED
+    apply_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_time DATETIME,
+    UNIQUE(activity_id, user_id),
+    FOREIGN KEY (activity_id) REFERENCES activity(id)
+);
+
+-- Bind each activity day to a concrete daily_schedule row
+CREATE TABLE IF NOT EXISTS activity_task (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    participation_id INTEGER NOT NULL,
+    daily_schedule_id INTEGER NOT NULL,
+    scheduled_date DATE NOT NULL,
+    task_index INTEGER NOT NULL,
+    status TEXT DEFAULT 'PENDING', -- PENDING/COMPLETED/SKIPPED
+    completed_time DATETIME,
+    UNIQUE(daily_schedule_id),
+    UNIQUE(participation_id, task_index),
+    FOREIGN KEY (participation_id) REFERENCES activity_participation(id)
+);
+
+-- Activity completed content (for forwarding)
+CREATE TABLE IF NOT EXISTS activity_dynamic (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    activity_id INTEGER NOT NULL,
+    participation_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (activity_id) REFERENCES activity(id),
+    FOREIGN KEY (participation_id) REFERENCES activity_participation(id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_activity_status ON activity(status);
+CREATE INDEX IF NOT EXISTS idx_activity_pinned ON activity(pinned);
+CREATE INDEX IF NOT EXISTS idx_activity_start_time ON activity(start_time);
+CREATE INDEX IF NOT EXISTS idx_activity_participation_activity ON activity_participation(activity_id);
+CREATE INDEX IF NOT EXISTS idx_activity_task_participation ON activity_task(participation_id);
+CREATE INDEX IF NOT EXISTS idx_activity_dynamic_activity ON activity_dynamic(activity_id);

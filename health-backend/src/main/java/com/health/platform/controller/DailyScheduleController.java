@@ -4,16 +4,30 @@ import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.health.platform.common.Result;
+import com.health.platform.entity.Activity;
+import com.health.platform.entity.ActivityDynamic;
+import com.health.platform.entity.ActivityParticipation;
+import com.health.platform.entity.ActivityTask;
 import com.health.platform.entity.DailySchedule;
+import com.health.platform.entity.SysUser;
+import com.health.platform.entity.TrainingPlan;
 import com.health.platform.entity.TrainingRecord;
 import com.health.platform.mapper.DailyScheduleMapper;
+import com.health.platform.mapper.ActivityDynamicMapper;
+import com.health.platform.mapper.ActivityMapper;
+import com.health.platform.mapper.ActivityParticipationMapper;
+import com.health.platform.mapper.ActivityTaskMapper;
 import com.health.platform.mapper.TrainingRecordMapper;
+import com.health.platform.mapper.TrainingMapper;
+import com.health.platform.mapper.UserMapper;
+import com.health.platform.service.ScheduleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Tag(name = "Daily Schedules & Records")
@@ -27,6 +41,27 @@ public class DailyScheduleController {
 
     @Autowired
     private TrainingRecordMapper recordMapper;
+
+    @Autowired
+    private TrainingMapper trainingMapper;
+
+    @Autowired
+    private ScheduleService scheduleService;
+
+    @Autowired
+    private ActivityMapper activityMapper;
+
+    @Autowired
+    private ActivityParticipationMapper participationMapper;
+
+    @Autowired
+    private ActivityTaskMapper taskMapper;
+
+    @Autowired
+    private ActivityDynamicMapper dynamicMapper;
+
+    @Autowired
+    private UserMapper userMapper;
 
     @Operation(summary = "Get today's schedules")
     @GetMapping("/today")
@@ -96,6 +131,52 @@ public class DailyScheduleController {
         record.setRecordTime(java.time.LocalDateTime.now());
         recordMapper.insert(record);
 
+        // Activity integration: mark task completion and generate activity dynamic when all tasks finished.
+        if ("COMPLETED".equals(schedule.getStatus())) {
+            ActivityTask task = taskMapper.selectOne(new LambdaQueryWrapper<ActivityTask>()
+                    .eq(ActivityTask::getDailyScheduleId, id));
+
+            if (task != null && task.getParticipationId() != null) {
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+                task.setStatus("COMPLETED");
+                task.setCompletedTime(now);
+                taskMapper.updateById(task);
+
+                ActivityParticipation participation = participationMapper.selectById(task.getParticipationId());
+                if (participation != null) {
+                    List<ActivityTask> allTasks = taskMapper.selectList(new LambdaQueryWrapper<ActivityTask>()
+                            .eq(ActivityTask::getParticipationId, participation.getId()));
+
+                    boolean allCompleted = !allTasks.isEmpty()
+                            && allTasks.stream().allMatch(t -> "COMPLETED".equals(t.getStatus()));
+
+                    if (allCompleted) {
+                        participation.setStatus("COMPLETED");
+                        participation.setCompletedTime(now);
+                        participationMapper.updateById(participation);
+
+                        Activity act = activityMapper.selectById(participation.getActivityId());
+                        SysUser user = userMapper.selectById(participation.getUserId());
+
+                        ActivityDynamic existed = dynamicMapper.selectOne(new LambdaQueryWrapper<ActivityDynamic>()
+                                .eq(ActivityDynamic::getActivityId, act != null ? act.getId() : participation.getActivityId())
+                                .eq(ActivityDynamic::getParticipationId, participation.getId()));
+
+                        if (existed == null && act != null) {
+                            ActivityDynamic dyn = new ActivityDynamic();
+                            dyn.setActivityId(act.getId());
+                            dyn.setParticipationId(participation.getId());
+                            dyn.setUserId(participation.getUserId());
+                            // Content will be shown in activity content area and used as a template for forwarding.
+                            String nickname = user != null && user.getNickname() != null ? user.getNickname() : ("用户#" + participation.getUserId());
+                            dyn.setContent("[" + nickname + "] 已完成活动《" + act.getTitle() + "》！坚持训练，保持节奏。");
+                            dynamicMapper.insert(dyn);
+                        }
+                    }
+                }
+            }
+        }
+
         return Result.success();
     }
 
@@ -159,6 +240,149 @@ public class DailyScheduleController {
         scheduleMapper.updateById(schedule);
         return Result.success();
     }
+
+    @Operation(summary = "Postpone a schedule to selected date")
+    @PostMapping("/{id}/postpone")
+    public Result<Void> postponeSchedule(@PathVariable Integer id, @RequestBody PostponeReq req) {
+        Integer userId = StpUtil.getLoginIdAsInt();
+        DailySchedule schedule = scheduleMapper.selectById(id);
+        if (schedule == null || !userId.equals(schedule.getUserId())) {
+            return Result.error("Schedule not found or unauthorized");
+        }
+        if (!LocalDate.now().equals(schedule.getDate())) {
+            return Result.error("Only today's schedule can be postponed");
+        }
+        if (!"PENDING".equals(schedule.getStatus())) {
+            return Result.error("Only pending schedules can be postponed");
+        }
+
+        if (req == null || req.getTargetDate() == null) {
+            return Result.error("targetDate is required");
+        }
+        if (!req.getTargetDate().isAfter(schedule.getDate())) {
+            return Result.error("targetDate must be later than original date");
+        }
+        long deltaDays = ChronoUnit.DAYS.between(schedule.getDate(), req.getTargetDate());
+
+        if ("COURSE".equals(schedule.getSourceType())) {
+            schedule.setDate(schedule.getDate().plusDays(deltaDays));
+            scheduleMapper.updateById(schedule);
+            return Result.success();
+        }
+
+        if ("PLAN".equals(schedule.getSourceType()) && schedule.getPlanId() != null) {
+            List<DailySchedule> tails = scheduleMapper.selectList(new LambdaQueryWrapper<DailySchedule>()
+                    .eq(DailySchedule::getUserId, userId)
+                    .eq(DailySchedule::getPlanId, schedule.getPlanId())
+                    .eq(DailySchedule::getSourceType, "PLAN")
+                    .eq(DailySchedule::getStatus, "PENDING")
+                    .ge(DailySchedule::getDate, schedule.getDate())
+                    .orderByDesc(DailySchedule::getDate));
+            for (DailySchedule s : tails) {
+                s.setDate(s.getDate().plusDays(deltaDays));
+                scheduleMapper.updateById(s);
+            }
+            return Result.success();
+        }
+
+        return Result.error("Unsupported schedule type");
+    }
+
+    @Operation(summary = "Pause upcoming schedules")
+    @PostMapping("/{id}/pause")
+    public Result<Void> pauseUpcomingSchedules(@PathVariable Integer id) {
+        Integer userId = StpUtil.getLoginIdAsInt();
+        DailySchedule schedule = scheduleMapper.selectById(id);
+        if (schedule == null || !userId.equals(schedule.getUserId())) {
+            return Result.error("Schedule not found or unauthorized");
+        }
+
+        LambdaQueryWrapper<DailySchedule> wrapper = new LambdaQueryWrapper<DailySchedule>()
+                .eq(DailySchedule::getUserId, userId)
+                .eq(DailySchedule::getStatus, "PENDING")
+                .ge(DailySchedule::getDate, schedule.getDate());
+
+        if ("PLAN".equals(schedule.getSourceType()) && schedule.getPlanId() != null) {
+            wrapper.eq(DailySchedule::getSourceType, "PLAN")
+                    .eq(DailySchedule::getPlanId, schedule.getPlanId());
+        } else if ("COURSE".equals(schedule.getSourceType()) && schedule.getCourseId() != null) {
+            wrapper.eq(DailySchedule::getSourceType, "COURSE")
+                    .eq(DailySchedule::getCourseId, schedule.getCourseId());
+        } else {
+            return Result.error("Unsupported schedule type");
+        }
+
+        List<DailySchedule> targets = scheduleMapper.selectList(wrapper);
+        for (DailySchedule s : targets) {
+            s.setStatus("PAUSED");
+            scheduleMapper.updateById(s);
+        }
+        return Result.success();
+    }
+
+    @Operation(summary = "Resume paused schedules")
+    @PostMapping("/{id}/resume")
+    public Result<Void> resumePausedSchedules(@PathVariable Integer id) {
+        Integer userId = StpUtil.getLoginIdAsInt();
+        DailySchedule schedule = scheduleMapper.selectById(id);
+        if (schedule == null || !userId.equals(schedule.getUserId())) {
+            return Result.error("Schedule not found or unauthorized");
+        }
+
+        LambdaQueryWrapper<DailySchedule> wrapper = new LambdaQueryWrapper<DailySchedule>()
+                .eq(DailySchedule::getUserId, userId)
+                .eq(DailySchedule::getStatus, "PAUSED")
+                .ge(DailySchedule::getDate, schedule.getDate());
+
+        if ("PLAN".equals(schedule.getSourceType()) && schedule.getPlanId() != null) {
+            wrapper.eq(DailySchedule::getSourceType, "PLAN")
+                    .eq(DailySchedule::getPlanId, schedule.getPlanId());
+        } else if ("COURSE".equals(schedule.getSourceType()) && schedule.getCourseId() != null) {
+            wrapper.eq(DailySchedule::getSourceType, "COURSE")
+                    .eq(DailySchedule::getCourseId, schedule.getCourseId());
+        } else {
+            return Result.error("Unsupported schedule type");
+        }
+
+        List<DailySchedule> targets = scheduleMapper.selectList(wrapper);
+        for (DailySchedule s : targets) {
+            s.setStatus("PENDING");
+            scheduleMapper.updateById(s);
+        }
+        return Result.success();
+    }
+
+    @Operation(summary = "Reset plan progress and regenerate schedules")
+    @PostMapping("/{id}/reset")
+    public Result<Void> resetPlanProgress(@PathVariable Integer id) {
+        Integer userId = StpUtil.getLoginIdAsInt();
+        DailySchedule schedule = scheduleMapper.selectById(id);
+        if (schedule == null || !userId.equals(schedule.getUserId())) {
+            return Result.error("Schedule not found or unauthorized");
+        }
+
+        // Activity tasks cannot be reset (they are managed by activity progress).
+        ActivityTask activityTask = taskMapper.selectOne(new LambdaQueryWrapper<ActivityTask>()
+                .eq(ActivityTask::getDailyScheduleId, id));
+        if (activityTask != null) {
+            return Result.error("Activity tasks cannot be reset");
+        }
+
+        if (!"PLAN".equals(schedule.getSourceType()) || schedule.getPlanId() == null) {
+            return Result.error("Only plan schedules support reset");
+        }
+
+        TrainingPlan plan = trainingMapper.selectById(schedule.getPlanId());
+        if (plan == null || !userId.equals(plan.getUserId())) {
+            return Result.error("Plan not found or unauthorized");
+        }
+
+        plan.setStartDate(LocalDate.now());
+        plan.setStatus("ACTIVE");
+        trainingMapper.updateById(plan);
+        scheduleService.generateSchedule(plan, null);
+        return Result.success();
+    }
     
     @Operation(summary = "Get user's training records")
     @GetMapping("/records")
@@ -178,6 +402,13 @@ public class DailyScheduleController {
         public void setCourseId(Integer courseId) { this.courseId = courseId; }
         public List<LocalDate> getDates() { return dates; }
         public void setDates(List<LocalDate> dates) { this.dates = dates; }
+    }
+
+    public static class PostponeReq {
+        private LocalDate targetDate;
+
+        public LocalDate getTargetDate() { return targetDate; }
+        public void setTargetDate(LocalDate targetDate) { this.targetDate = targetDate; }
     }
 
     @Autowired
@@ -203,6 +434,21 @@ public class DailyScheduleController {
             schedule.setCreateTime(java.time.LocalDateTime.now());
             scheduleMapper.insert(schedule);
         }
+        return Result.success();
+    }
+
+    @Operation(summary = "Cancel one scheduled training item")
+    @DeleteMapping("/{id}")
+    public Result<Void> cancelScheduledItem(@PathVariable Integer id) {
+        Integer userId = StpUtil.getLoginIdAsInt();
+        DailySchedule schedule = scheduleMapper.selectById(id);
+        if (schedule == null || !userId.equals(schedule.getUserId())) {
+            return Result.error("Schedule not found or unauthorized");
+        }
+        if ("COMPLETED".equals(schedule.getStatus())) {
+            return Result.error("Completed schedule cannot be canceled");
+        }
+        scheduleMapper.deleteById(id);
         return Result.success();
     }
 }

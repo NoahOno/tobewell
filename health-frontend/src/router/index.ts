@@ -86,6 +86,12 @@ const routes: Array<RouteRecordRaw> = [
                 name: 'Mine',
                 component: () => import('../views/Dashboard.vue')
             },
+            {
+                // Keep path under /app/explore so Layout sidebar logic still treats it as "探索"
+                path: 'explore/webai',
+                name: 'WebAIChat',
+                component: () => import('../views/WebAIChat.vue')
+            },
         ]
     },
     {

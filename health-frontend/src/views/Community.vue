@@ -39,86 +39,187 @@
           <el-menu-item index="mine">
             <el-icon><EditPen /></el-icon><span>我的发帖</span>
           </el-menu-item>
+          <el-menu-item index="activityCenter">
+            <el-icon><Management /></el-icon><span>活动中心</span>
+          </el-menu-item>
         </el-menu>
       </aside>
 
       <!-- Center Post Feed -->
       <main class="community-feed" v-loading="loading">
-        <!-- Search results indicator -->
-        <div v-if="isSearchMode" class="search-result-bar">
-          <span>搜索「{{ lastSearchQ }}」的结果 · {{ posts.length }} 条</span>
-          <el-button link @click="clearSearch">清除搜索</el-button>
-        </div>
-
-        <div v-if="posts.length === 0 && !loading" class="empty-feed">
-          <el-empty :description="isSearchMode ? '没有找到相关帖子' : '暂无帖子，快来发第一帖！'" />
-        </div>
-
-        <div
-          v-for="post in posts"
-          :key="post.id"
-          class="post-card premium-card"
-          @click="openPost(post)"
-        >
-          <div class="post-header">
-            <el-avatar :size="38" class="post-avatar" @click.stop="showUserCard(post.userId)">{{ (post.nickname || '#')[0] }}</el-avatar>
-            <div class="post-author-info">
-              <div class="author-row">
-                <span class="author-name" @click.stop="showUserCard(post.userId)">{{ post.nickname || ('用户 #' + post.userId) }}</span>
+        <template v-if="activeTab === 'activityCenter'">
+          <!-- Activity detail -->
+          <template v-if="activeActivityId">
+            <div class="activity-detail-wrap">
+              <div class="activity-detail-header">
+                <el-button link type="primary" @click="activeActivityId = null">返回活动列表</el-button>
+                <div class="activity-detail-title">{{ activeActivity?.title || '' }}</div>
               </div>
-              <span class="post-time">{{ formatTime(post.createTime) }}</span>
-            </div>
-            <div class="post-header-actions">
-               <el-button 
-                 v-if="post.userId === currentUserId" 
-                 size="small" 
-                 link 
-                 type="danger" 
-                 @click.stop="deletePost(post.id)"
-               >删除</el-button>
-            </div>
-          </div>
-          <h3 class="post-title">{{ post.title }}</h3>
-          <p class="post-excerpt">{{ (post.content || '').slice(0, 120) }}{{ (post.content?.length || 0) > 120 ? '...' : '' }}</p>
-          <div class="post-tags-row" v-if="post.tags">
-            <el-tag
-              v-for="tag in (post.tags || '').split(',')"
-              :key="tag"
-              size="small"
-              type="info"
-              effect="plain"
-              class="post-tag"
-            ># {{ tag.trim() }}</el-tag>
-          </div>
-          <div class="post-footer">
-            <!-- Like (Heart) -->
-            <el-button 
-              link 
-              class="post-stat-btn like-btn" 
-              :class="{ 'is-active': post.isLiked }"
-              @click.stop="toggleLike(post)"
-            >
-              <svg viewBox="0 0 1024 1024" width="18" height="18" :fill="post.isLiked ? '#F56C6C' : '#94A3B8'">
-                <path d="M923 283.6c-13.4-31.1-32.6-58.9-56.9-82.8-24.3-23.8-52.5-42.4-84-55.5-32.5-13.5-66.9-20.3-102.4-20.3-49.3 0-97.4 13.5-139.2 39-10 6.1-19.5 12.8-28.5 20.1-9-7.3-18.5-14-28.5-20.1-41.8-25.5-89.9-39-139.2-39-35.5 0-69.9 6.8-102.4 20.3-31.4 13-59.7 31.7-84 55.5-24.4 23.9-43.5 51.7-56.9 82.8-13.9 32.3-21 66.6-21 101.9 0 33.3 6.8 68 20.3 103.3 11.3 29.5 27.5 60.1 48.2 91 32.8 48.9 77.9 99.9 133.9 151.6 92.8 85.7 184.7 144.9 188.6 147.3l23.7 15.2c10.5 6.7 24 6.7 34.5 0l23.7-15.2c3.9-2.5 95.7-61.6 188.6-147.3 56-51.7 101.1-102.7 133.9-151.6 20.7-30.9 37-61.5 48.2-91 13.5-35.3 20.3-70 20.3-103.3 0.1-35.3-7-69.6-20.9-101.9z"></path>
-              </svg>
-              <span class="stat-count">{{ post.likeCount || 0 }}</span>
-            </el-button>
-            
-            <!-- Collect (Star) -->
-            <el-button 
-              link 
-              class="post-stat-btn collect-btn" 
-              :class="{ 'is-active': post.isCollected }"
-              @click.stop="toggleCollect(post)"
-            >
-              <el-icon><StarFilled v-if="post.isCollected" /><Star v-else /></el-icon>
-              <span class="stat-count">{{ post.collectionCount || 0 }}</span>
-            </el-button>
+              <div class="activity-detail-time" v-if="activeActivity">
+                {{ formatDateRange(activeActivity.startTime, activeActivity.endTime) }}
+              </div>
 
-            <!-- Comment (Bubble) -->
-            <span class="post-stat"><el-icon><ChatDotRound /></el-icon> {{ post.commentCount || 0 }}</span>
+              <div class="activity-detail-meta-row" v-if="activeActivity">
+                <el-tag v-if="activeActivity.pinned === 1" type="success" size="small" effect="plain">置顶</el-tag>
+                <el-tag :type="activeActivity.status === 'ONLINE' ? 'info' : 'danger'" size="small" effect="plain">
+                  {{ activeActivity.status === 'ONLINE' ? '在线' : '下线' }}
+                </el-tag>
+                <el-tag type="primary" size="small" effect="plain">{{ activeActivity.requiredDays }} 天要求</el-tag>
+                <el-tag type="warning" size="small" effect="plain">{{ activeActivity.templateType }}</el-tag>
+              </div>
+
+              <div class="activity-detail-description" v-if="activeActivity?.descriptionHtml" v-html="activeActivity.descriptionHtml" />
+
+              <div class="activity-completed-block">
+                <div class="completed-block-title">活动内容区（完成用户）</div>
+
+                <div v-if="activityCompletedItems.length === 0" class="empty-subtle">
+                  暂无完成记录
+                </div>
+
+                <div
+                  v-for="item in activityCompletedItems"
+                  :key="item.participationId"
+                  class="completed-item"
+                >
+                  <div class="completed-top">
+                    <div class="completed-nick">{{ item.nickname || ('用户 #' + item.userId) }}</div>
+                    <div class="completed-time">{{ formatTime(item.completedTime) }}</div>
+                  </div>
+                  <div class="completed-dynamic" v-html="item.content" />
+                  <div class="completed-actions">
+                    <el-button size="small" type="primary" plain @click="handleForwardActivityDynamic(item)">转发</el-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- Activity list -->
+          <template v-else>
+            <div class="activity-list-wrap">
+              <div class="activity-list-header">
+                <div class="activity-list-title">活动中心</div>
+                <div class="activity-list-sub">报名后从活动开始时间起插入连续训练任务，完成后生成打卡动态</div>
+              </div>
+
+              <div v-if="activities.length === 0" class="empty-subtle">
+                暂无活动
+              </div>
+
+              <div v-else class="activity-card-grid">
+                <div
+                  v-for="act in activities"
+                  :key="act.id"
+                  class="activity-card"
+                >
+                  <div class="activity-card-main" @click="openActivityDetail(act.id)">
+                    <div class="activity-card-title">{{ act.title }}</div>
+                    <div class="activity-card-meta">
+                      {{ formatDateRange(act.startTime, act.endTime) }} · {{ act.requiredDays }} 天
+                      <span v-if="act.templateType"> · {{ act.templateType }}</span>
+                    </div>
+                    <div class="activity-card-tags">
+                      <el-tag v-if="act.pinned === 1" type="success" size="small" effect="plain">置顶</el-tag>
+                      <el-tag :type="act.status === 'ONLINE' ? 'info' : 'danger'" size="small" effect="plain">
+                        {{ act.status === 'ONLINE' ? '在线' : '下线' }}
+                      </el-tag>
+                    </div>
+                  </div>
+                  <div class="activity-card-actions">
+                    <el-button
+                      size="small"
+                      type="primary"
+                      plain
+                      :loading="applyActivityLoadingId === act.id"
+                      @click.stop="applyActivity(act.id)"
+                    >
+                      报名
+                    </el-button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </template>
+
+        <template v-else>
+          <!-- Search results indicator -->
+          <div v-if="isSearchMode" class="search-result-bar">
+            <span>搜索「{{ lastSearchQ }}」的结果 · {{ posts.length }} 条</span>
+            <el-button link @click="clearSearch">清除搜索</el-button>
           </div>
-        </div>
+
+          <div v-if="posts.length === 0 && !loading" class="empty-feed">
+            <el-empty :description="isSearchMode ? '没有找到相关帖子' : '暂无帖子，快来发第一帖！'" />
+          </div>
+
+          <div
+            v-for="post in posts"
+            :key="post.id"
+            class="post-card premium-card"
+            @click="openPost(post)"
+          >
+            <div class="post-header">
+              <el-avatar :size="38" class="post-avatar" @click.stop="showUserCard(post.userId)">{{ (post.nickname || '#')[0] }}</el-avatar>
+              <div class="post-author-info">
+                <div class="author-row">
+                  <span class="author-name" @click.stop="showUserCard(post.userId)">{{ post.nickname || ('用户 #' + post.userId) }}</span>
+                </div>
+                <span class="post-time">{{ formatTime(post.createTime) }}</span>
+              </div>
+              <div class="post-header-actions">
+                <el-button
+                  v-if="post.userId === currentUserId"
+                  size="small"
+                  link
+                  type="danger"
+                  @click.stop="deletePost(post.id)"
+                >删除</el-button>
+              </div>
+            </div>
+            <h3 class="post-title">{{ post.title }}</h3>
+            <p class="post-excerpt">{{ (post.content || '').slice(0, 120) }}{{ (post.content?.length || 0) > 120 ? '...' : '' }}</p>
+            <div class="post-tags-row" v-if="post.tags">
+              <el-tag
+                v-for="tag in (post.tags || '').split(',')"
+                :key="tag"
+                size="small"
+                type="info"
+                effect="plain"
+                class="post-tag"
+              ># {{ tag.trim() }}</el-tag>
+            </div>
+            <div class="post-footer">
+              <!-- Like (Heart) -->
+              <el-button
+                link
+                class="post-stat-btn like-btn"
+                :class="{ 'is-active': post.isLiked }"
+                @click.stop="toggleLike(post)"
+              >
+                <svg viewBox="0 0 1024 1024" width="18" height="18" :fill="post.isLiked ? '#F56C6C' : '#94A3B8'">
+                  <path d="M923 283.6c-13.4-31.1-32.6-58.9-56.9-82.8-24.3-23.8-52.5-42.4-84-55.5-32.5-13.5-66.9-20.3-102.4-20.3-49.3 0-97.4 13.5-139.2 39-10 6.1-19.5 12.8-28.5 20.1-9-7.3-18.5-14-28.5-20.1-41.8-25.5-89.9-39-139.2-39-35.5 0-69.9 6.8-102.4 20.3-31.4 13-59.7 31.7-84 55.5-24.4 23.9-43.5 51.7-56.9 82.8-13.9 32.3-21 66.6-21 101.9 0 33.3 6.8 68 20.3 103.3 11.3 29.5 27.5 60.1 48.2 91 32.8 48.9 77.9 99.9 133.9 151.6 92.8 85.7 184.7 144.9 188.6 147.3l23.7 15.2c10.5 6.7 24 6.7 34.5 0l23.7-15.2c3.9-2.5 95.7-61.6 188.6-147.3 56-51.7 101.1-102.7 133.9-151.6 20.7-30.9 37-61.5 48.2-91 13.5-35.3 20.3-70 20.3-103.3 0.1-35.3-7-69.6-20.9-101.9z"></path>
+                </svg>
+                <span class="stat-count">{{ post.likeCount || 0 }}</span>
+              </el-button>
+
+              <!-- Collect (Star) -->
+              <el-button
+                link
+                class="post-stat-btn collect-btn"
+                :class="{ 'is-active': post.isCollected }"
+                @click.stop="toggleCollect(post)"
+              >
+                <el-icon><StarFilled v-if="post.isCollected" /><Star v-else /></el-icon>
+                <span class="stat-count">{{ post.collectionCount || 0 }}</span>
+              </el-button>
+
+              <!-- Comment (Bubble) -->
+              <span class="post-stat"><el-icon><ChatDotRound /></el-icon> {{ post.commentCount || 0 }}</span>
+            </div>
+          </div>
+        </template>
       </main>
 
       <!-- Right Sidebar -->
@@ -135,6 +236,19 @@
             <span class="hot-text">{{ hot.title }}</span>
           </div>
           <el-empty v-if="hotPosts.length === 0" description="暂无热门" :image-size="60" />
+        </div>
+        <div class="right-card premium-card activity-trending">
+          <div class="right-title">🔥 热门活动</div>
+          <div
+            v-for="(act, i) in trendingActivities"
+            :key="act.id"
+            class="hot-item"
+            @click="openActivityDetail(act.id)"
+          >
+            <span class="hot-rank" :class="`rank-${i+1}`">{{ i + 1 }}</span>
+            <span class="hot-text">{{ act.title }}</span>
+          </div>
+          <el-empty v-if="trendingActivities.length === 0" description="暂无热门活动" :image-size="60" />
         </div>
         <div class="right-card premium-card announcement">
           <div class="right-title">📢 社区公告</div>
@@ -276,6 +390,13 @@ const selectedPost = ref<any>(null)
 const cardUser = ref<any>(null)
 const commentText = ref('')
 
+// Activities (Community + Admin)
+const activities = ref<any[]>([])
+const trendingActivities = ref<any[]>([])
+const activeActivityId = ref<number | null>(null)
+const activityCompletedItems = ref<any[]>([])
+const applyActivityLoadingId = ref<number | null>(null)
+
 // Mocking current user ID (should ideally come from store)
 const currentUserId = ref(0) 
 
@@ -283,6 +404,11 @@ const postForm = reactive({
   title: '',
   content: '',
   category: '综合' // Kept for backend compatibility but hidden in UI
+})
+
+const activeActivity = computed(() => {
+  if (activeActivityId.value == null) return null
+  return activities.value.find(a => String(a.id) === String(activeActivityId.value)) || null
 })
 
 const fetchUserInfo = async () => {
@@ -314,6 +440,73 @@ const fetchHotPosts = async () => {
   } catch (e) {}
 }
 
+const fetchActivities = async () => {
+  try {
+    const res: any = await request.get('/activity/list')
+    activities.value = res.data || []
+  } catch (e) {}
+}
+
+const fetchTrendingActivities = async () => {
+  try {
+    const res: any = await request.get('/activity/trending')
+    trendingActivities.value = res.data || []
+  } catch (e) {}
+}
+
+const fetchActivityCompleted = async (activityId: number) => {
+  try {
+    const res: any = await request.get(`/activity/${activityId}/completed`)
+    const items = res?.data?.items || []
+    activityCompletedItems.value = items
+  } catch (e) {
+    activityCompletedItems.value = []
+  }
+}
+
+const openActivityDetail = async (activityId: number) => {
+  // Ensure we switch to the standalone Activity Center view.
+  activeTab.value = 'activityCenter'
+  activeActivityId.value = activityId
+  isSearchMode.value = false
+  if (activities.value.length === 0) await fetchActivities()
+  await fetchActivityCompleted(activityId)
+}
+
+const applyActivity = async (activityId: number) => {
+  applyActivityLoadingId.value = activityId
+  try {
+    await request.post(`/activity/${activityId}/apply`)
+    // Reload completion area
+    await fetchActivityCompleted(activityId)
+    ElMessage.success('报名成功')
+    // Keep local activity list fresh (optional)
+    await fetchActivities()
+  } catch (e) {
+    // backend error will already be shown by request interceptor
+  } finally {
+    applyActivityLoadingId.value = null
+  }
+}
+
+const handleForwardActivityDynamic = (item: any) => {
+  const title = `我完成了活动《${activeActivity?.title || '活动'}》`
+  const content = `${item.content}\n\n#活动打卡 #健康管理`
+  openPostDialog({ title, content })
+}
+
+const formatDateRange = (start: any, end: any) => {
+  if (!start) return ''
+  const s = new Date(start)
+  const e = end ? new Date(end) : null
+  const sm = `${s.getMonth() + 1}`.padStart(2, '0')
+  const sd = `${s.getDate()}`.padStart(2, '0')
+  if (!e) return `${sm}-${sd}`
+  const em = `${e.getMonth() + 1}`.padStart(2, '0')
+  const ed = `${e.getDate()}`.padStart(2, '0')
+  return `${sm}-${sd} ~ ${em}-${ed}`
+}
+
 const doSearch = async () => {
   if (!searchQ.value.trim()) return
   loading.value = true
@@ -338,6 +531,13 @@ const clearSearch = () => {
 const handleTabChange = (tab: string) => {
   activeTab.value = tab
   isSearchMode.value = false
+  if (tab === 'activityCenter') {
+    activeActivityId.value = null
+    fetchActivities()
+    fetchTrendingActivities()
+    return
+  }
+  activeActivityId.value = null
   fetchPosts()
 }
 
@@ -481,8 +681,11 @@ const submitComment = async () => {
   }
 }
 
-const openPostDialog = () => {
-  Object.assign(postForm, { title: '', content: '' })
+const openPostDialog = (prefill?: { title?: string; content?: string }) => {
+  Object.assign(postForm, {
+    title: prefill?.title || '',
+    content: prefill?.content || ''
+  })
   createDialogVisible.value = true
 }
 
@@ -505,6 +708,8 @@ onMounted(() => {
   fetchUserInfo()
   fetchPosts()
   fetchHotPosts()
+  fetchActivities()
+  fetchTrendingActivities()
 })
 </script>
 
@@ -898,4 +1103,168 @@ onMounted(() => {
 .card-actions .el-button {
   width: 100%;
 }
+
+/* Activity Center (standalone page) */
+.activity-list-wrap {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.activity-list-header {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.activity-list-title {
+  font-size: 16px;
+  font-weight: 900;
+  color: #0F172A;
+}
+
+.activity-list-sub {
+  font-size: 13px;
+  color: #64748B;
+  line-height: 1.6;
+}
+
+.activity-card-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-card {
+  background: #F8FAFC;
+  border: 1px solid #F1F5F9;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.activity-card-main {
+  flex: 1;
+  cursor: pointer;
+}
+
+.activity-card-title {
+  font-size: 15px;
+  font-weight: 900;
+  color: #0F172A;
+  margin-bottom: 6px;
+}
+
+.activity-card-meta {
+  font-size: 12px;
+  color: #64748B;
+  line-height: 1.6;
+}
+
+.activity-card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.activity-card-actions {
+  display: flex;
+  align-items: flex-start;
+}
+
+.activity-detail-wrap {
+  background: white;
+  border-radius: 14px;
+  padding: 18px;
+  box-shadow: 0 10px 30px rgba(2, 6, 23, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.activity-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.activity-detail-title {
+  font-size: 18px;
+  font-weight: 950;
+  color: #0F172A;
+  text-align: right;
+}
+
+.activity-detail-time {
+  font-size: 12px;
+  color: #64748B;
+}
+
+.activity-detail-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.activity-detail-description {
+  border: 1px solid #EFF6FF;
+  background: #EFF6FF;
+  color: #1D4ED8;
+  padding: 12px;
+  border-radius: 12px;
+}
+
+.completed-block-title {
+  font-weight: 900;
+  color: #0F172A;
+  margin-bottom: 10px;
+}
+
+.completed-item {
+  padding: 14px;
+  background: #F8FAFC;
+  border: 1px solid #F1F5F9;
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.completed-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.completed-nick {
+  font-weight: 900;
+  color: #0F172A;
+}
+
+.completed-time {
+  font-size: 12px;
+  color: #94A3B8;
+}
+
+.completed-dynamic {
+  color: #334155;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+.completed-actions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+}
+
 </style>

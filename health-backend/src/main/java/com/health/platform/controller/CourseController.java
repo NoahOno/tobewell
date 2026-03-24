@@ -71,7 +71,7 @@ public class CourseController {
 
     @Operation(summary = "Subscribe to a course")
     @PostMapping("/subscribe/{id}")
-    public Result<Void> subscribe(@PathVariable Integer id) {
+    public Result<Integer> subscribe(@PathVariable Integer id) {
         Course original = courseMapper.selectById(id);
         if (original == null) {
             return Result.error("Course not found");
@@ -79,14 +79,15 @@ public class CourseController {
 
         Integer userId = StpUtil.getLoginIdAsInt();
 
-        // Check if already subscribed
-        Long count = courseMapper.selectCount(new LambdaQueryWrapper<Course>()
+        // Check if already subscribed (clone by title)
+        Course existing = courseMapper.selectOne(new LambdaQueryWrapper<Course>()
                 .eq(Course::getCreatorId, userId)
                 .eq(Course::getTitle, original.getTitle())
-                .eq(Course::getIsPublic, false));
+                .eq(Course::getIsPublic, false)
+                .last("LIMIT 1"));
 
-        if (count > 0) {
-            return Result.success(); // Already subscribed
+        if (existing != null && existing.getId() != null) {
+            return Result.success(existing.getId()); // Already subscribed
         }
 
         Course clone = new Course();
@@ -101,7 +102,7 @@ public class CourseController {
         clone.setCreatorId(userId);
 
         courseMapper.insert(clone);
-        return Result.success();
+        return Result.success(clone.getId());
     }
 
     @Operation(summary = "Unsubscribe or delete course")

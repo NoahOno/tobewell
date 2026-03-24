@@ -112,6 +112,65 @@
             </el-table>
           </div>
         </el-tab-pane>
+
+        <!-- 4. Activities CRUD -->
+        <el-tab-pane label="活动中心 (Activities)" name="activities">
+          <div class="table-card premium-card" v-loading="loading">
+            <el-table :data="activities" style="width: 100%">
+              <el-table-column prop="id" label="ID" width="70" />
+              <el-table-column label="活动信息" min-width="260">
+                <template #default="sc">
+                  <div class="act-cell">
+                    <span class="act-title">{{ sc.row.title }}</span>
+                    <span class="act-meta">{{ sc.row.templateType }} · 模板ID {{ sc.row.templateId }}</span>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="时间范围" min-width="220">
+                <template #default="sc">
+                  <div class="act-time">{{ formatDateTime(sc.row.startTime) }} - {{ formatDateTime(sc.row.endTime) }}</div>
+                </template>
+              </el-table-column>
+              <el-table-column label="要求/置顶" width="130">
+                <template #default="sc">
+                  <div class="act-tags">
+                    <el-tag v-if="sc.row.pinned === 1" type="success" size="small" effect="plain">置顶</el-tag>
+                    <el-tag type="info" size="small" effect="plain">{{ sc.row.requiredDays }}天</el-tag>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column label="状态" width="120">
+                <template #default="sc">
+                  <el-tag :type="sc.row.status === 'ONLINE' ? 'info' : 'danger'" size="small">{{ sc.row.status }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="管理" width="260" align="right">
+                <template #default="sc">
+                  <el-button size="small" link @click="editActivity(sc.row)">编辑</el-button>
+                  <el-button
+                    size="small"
+                    link
+                    type="warning"
+                    @click="togglePin(sc.row.id, sc.row.pinned)"
+                  >{{ sc.row.pinned === 1 ? '取消置顶' : '置顶' }}</el-button>
+                  <el-button
+                    v-if="sc.row.status === 'ONLINE'"
+                    size="small"
+                    link
+                    type="danger"
+                    @click="offlineActivity(sc.row.id)"
+                  >下线</el-button>
+                  <el-button size="small" link @click="showAnalytics(sc.row.id)">统计</el-button>
+                  <el-popconfirm title="确定删除该活动吗？" @confirm="deleteActivity(sc.row.id)">
+                    <template #reference>
+                      <el-button size="small" type="danger" link>删除</el-button>
+                    </template>
+                  </el-popconfirm>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
+        </el-tab-pane>
       </el-tabs>
     </div>
 
@@ -161,6 +220,113 @@
          <el-button type="primary" @click="savePlanCourse" round>确认发布</el-button>
        </template>
      </el-dialog>
+
+    <!-- Activity Dialog -->
+    <el-dialog
+      v-model="activityDialogVisible"
+      :title="formActivity.id ? '编辑活动' : '发布活动'"
+      width="620px"
+      class="premium-dialog"
+    >
+      <el-form :model="formActivity" label-position="top">
+        <el-form-item label="活动标题">
+          <el-input v-model="formActivity.title" />
+        </el-form-item>
+        <el-form-item label="封面图 URL">
+          <el-input v-model="formActivity.coverImage" placeholder="https://..." />
+        </el-form-item>
+        <el-form-item label="活动描述 (HTML 字符串)">
+          <el-input v-model="formActivity.descriptionHtml" type="textarea" :rows="4" />
+        </el-form-item>
+
+        <el-row :gutter="24">
+          <el-col :span="12">
+            <el-form-item label="开始时间">
+              <el-date-picker
+                v-model="formActivity.startTime"
+                type="datetime"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                format="YYYY-MM-DD HH:mm:ss"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="结束时间">
+              <el-date-picker
+                v-model="formActivity.endTime"
+                type="datetime"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                format="YYYY-MM-DD HH:mm:ss"
+                style="width: 100%"
+              />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
+        <el-form-item label="完成活动的要求(天)">
+          <el-input-number v-model="formActivity.requiredDays" :min="1" :max="365" style="width: 100%" />
+        </el-form-item>
+
+        <el-form-item label="任务模板类型">
+          <el-radio-group v-model="formActivity.templateType">
+            <el-radio-button label="PLAN" />
+            <el-radio-button label="COURSE" />
+          </el-radio-group>
+        </el-form-item>
+
+        <el-form-item label="选择模板">
+          <el-select
+            v-if="formActivity.templateType === 'PLAN'"
+            v-model="formActivity.templateId"
+            placeholder="请选择训练计划"
+            style="width: 100%"
+          >
+            <el-option v-for="p in plans" :key="p.id" :label="p.title" :value="p.id" />
+          </el-select>
+          <el-select
+            v-else
+            v-model="formActivity.templateId"
+            placeholder="请选择精选课程"
+            style="width: 100%"
+          >
+            <el-option v-for="c in courses" :key="c.id" :label="c.title" :value="c.id" />
+          </el-select>
+        </el-form-item>
+
+        <el-form-item label="置顶">
+          <el-radio-group v-model="formActivity.pinned">
+            <el-radio :label="1">置顶</el-radio>
+            <el-radio :label="0">不置顶</el-radio>
+          </el-radio-group>
+        </el-form-item>
+
+        <el-form-item label="活动状态">
+          <el-radio-group v-model="formActivity.status">
+            <el-radio label="ONLINE">在线</el-radio>
+            <el-radio label="OFFLINE">下线</el-radio>
+          </el-radio-group>
+        </el-form-item>
+
+      </el-form>
+      <template #footer>
+        <el-button @click="activityDialogVisible = false" round>取消</el-button>
+        <el-button type="primary" @click="saveActivity" round>确认发布</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Activity Analytics Dialog -->
+    <el-dialog v-model="analyticsDialogVisible" title="活动数据看板" width="420px" class="premium-dialog">
+      <el-descriptions border :column="1" size="small">
+        <el-descriptions-item label="总参与人数">{{ analyticsData.totalParticipants }}</el-descriptions-item>
+        <el-descriptions-item label="日活跃人数 (完成任意任务去重)">{{ analyticsData.dailyActive }}</el-descriptions-item>
+        <el-descriptions-item label="完成人数">{{ analyticsData.completedParticipants }}</el-descriptions-item>
+        <el-descriptions-item label="完成率">{{ formatPercent(analyticsData.completionRate) }}</el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button type="primary" @click="analyticsDialogVisible = false" round>关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -174,6 +340,7 @@ const activeModule = ref('exercises')
 const exercises = ref<any[]>([])
 const plans = ref<any[]>([])
 const courses = ref<any[]>([])
+const activities = ref<any[]>([])
 const loading = ref(false)
 
 const difficultyTypeMap: any = {
@@ -185,7 +352,8 @@ const difficultyTypeMap: any = {
 const addBtnText = computed(() => {
   if (activeModule.value === 'exercises') return '动作入库'
   if (activeModule.value === 'plans') return '发布官方计划'
-  return '新增精选课'
+  if (activeModule.value === 'courses') return '新增精选课'
+  return '发布活动'
 })
 
 // Exercise Logic
@@ -220,6 +388,41 @@ const planCourseDialogVisible = ref(false)
 const formPlan = reactive<any>({ id: null, title: '', description: '', category: '', isPublic: true })
 const formCourse = reactive<any>({ id: null, title: '', difficulty: '初级', category: '', isPublic: true })
 
+// Activity Admin Logic
+const activityDialogVisible = ref(false)
+const analyticsDialogVisible = ref(false)
+const analyticsData = reactive<any>({
+  totalParticipants: 0,
+  dailyActive: 0,
+  completedParticipants: 0,
+  completionRate: 0
+})
+const formActivity = reactive<any>({
+  id: null,
+  title: '',
+  coverImage: '',
+  descriptionHtml: '',
+  startTime: '',
+  endTime: '',
+  templateType: 'PLAN',
+  templateId: null,
+  requiredDays: 7,
+  pinned: 0,
+  status: 'ONLINE'
+})
+
+const formatDateTime = (t: any) => {
+  if (!t) return ''
+  const d = new Date(t)
+  return d.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+const formatPercent = (v: any) => {
+  const num = Number(v)
+  if (!isFinite(num)) return '0%'
+  return (num * 100).toFixed(2) + '%'
+}
+
 const fetchPlans = async () => {
     loading.value = true
     try {
@@ -239,6 +442,12 @@ const handleTabChange = () => {
     if (activeModule.value === 'exercises') fetchExercises()
     if (activeModule.value === 'plans') fetchPlans()
     if (activeModule.value === 'courses') fetchCourses()
+    if (activeModule.value === 'activities') {
+      fetchActivities()
+      // activity form depends on template library lists
+      if (plans.value.length === 0) fetchPlans()
+      if (courses.value.length === 0) fetchCourses()
+    }
 }
 
 const handleAddButtonClick = () => {
@@ -248,6 +457,21 @@ const handleAddButtonClick = () => {
   } else if(activeModule.value === 'plans') {
     Object.assign(formPlan, { id: null, title: '', description: '', category: '', isPublic: true })
     planCourseDialogVisible.value = true
+  } else if (activeModule.value === 'activities') {
+    Object.assign(formActivity, {
+      id: null,
+      title: '',
+      coverImage: '',
+      descriptionHtml: '',
+      startTime: '',
+      endTime: '',
+      templateType: 'PLAN',
+      templateId: null,
+      requiredDays: 7,
+      pinned: 0,
+      status: 'ONLINE'
+    })
+    activityDialogVisible.value = true
   } else {
     Object.assign(formCourse, { id: null, title: '', difficulty: '初级', category: '', isPublic: true })
     planCourseDialogVisible.value = true
@@ -284,6 +508,56 @@ const deletePlan = async (id: number) => {
 const deleteCourse = async (id: number) => {
   await request.delete(`/admin/course/${id}`)
   fetchCourses()
+}
+
+// Activities CRUD
+const fetchActivities = async () => {
+  loading.value = true
+  try {
+    const res: any = await request.get('/admin/activities')
+    activities.value = res.data
+  } finally {
+    loading.value = false
+  }
+}
+
+const editActivity = (row: any) => {
+  Object.assign(formActivity, row)
+  activityDialogVisible.value = true
+}
+
+const saveActivity = async () => {
+  await request.post('/admin/activities', formActivity)
+  ElMessage.success('活动已保存')
+  activityDialogVisible.value = false
+  fetchActivities()
+}
+
+const offlineActivity = async (id: number) => {
+  await request.post(`/admin/activities/${id}/offline`)
+  ElMessage.success('活动已下线')
+  fetchActivities()
+}
+
+const togglePin = async (id: number, pinned: number) => {
+  const nextPinned = pinned === 1 ? 0 : 1
+  await request.post(`/admin/activities/${id}/pin`, { pinned: nextPinned })
+  fetchActivities()
+}
+
+const showAnalytics = async (id: number) => {
+  const res: any = await request.get(`/admin/activities/${id}/analytics`)
+  analyticsData.totalParticipants = res?.data?.totalParticipants ?? 0
+  analyticsData.dailyActive = res?.data?.dailyActive ?? 0
+  analyticsData.completedParticipants = res?.data?.completedParticipants ?? 0
+  analyticsData.completionRate = res?.data?.completionRate ?? 0
+  analyticsDialogVisible.value = true
+}
+
+const deleteActivity = async (id: number) => {
+  await request.delete(`/admin/activities/${id}`)
+  ElMessage.success('活动已删除')
+  fetchActivities()
 }
 
 onMounted(fetchExercises)
@@ -347,6 +621,23 @@ onMounted(fetchExercises)
 }
 
 .ex-muscle, .p-meta, .c-meta {
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+.act-cell {
+  display: flex;
+  flex-direction: column;
+}
+.act-title {
+  font-weight: 700;
+  color: var(--text-main);
+}
+.act-meta {
+  font-size: 12px;
+  color: var(--text-light);
+}
+.act-time {
   font-size: 12px;
   color: var(--text-light);
 }

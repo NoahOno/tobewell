@@ -102,12 +102,16 @@
                   <el-button size="small" :type="isCollected(plan) ? 'warning' : 'default'" @click.stop="toggleCollect(plan)">
                     <el-icon><Star v-if="!isCollected(plan)" /><StarFilled v-else /></el-icon> {{ isCollected(plan) ? '已想练' : '想练' }}
                   </el-button>
-                  <template v-if="isSubscribed(plan)">
-                    <el-button size="small" type="success" plain round @click.stop="router.push('/app/training')">去训练</el-button>
-                  </template>
-                  <template v-else>
-                    <el-button size="small" type="primary" plain round @click.stop="openSubscribeConfig(plan)">加入训练计划</el-button>
-                  </template>
+                  <el-button
+                    size="small"
+                    type="primary"
+                    plain
+                    round
+                    :disabled="isSubscribed(plan)"
+                    @click.stop="openSubscribeConfig(plan)"
+                  >
+                    {{ isSubscribed(plan) ? '已加入训练' : '加入训练计划' }}
+                  </el-button>
                 </div>
               </div>
             </div>
@@ -137,13 +141,16 @@
                   <el-button size="small" :type="isCollected(course) ? 'warning' : 'default'" @click.stop="toggleCollect(course)">
                     <el-icon><Star v-if="!isCollected(course)" /><StarFilled v-else /></el-icon> {{ isCollected(course) ? '已收藏' : '收藏' }}
                   </el-button>
-                  <template v-if="isCourseSubscribed(course)">
-                    <el-button size="small" type="success" plain round @click.stop="router.push('/app/training?tab=courses')">我的课程</el-button>
-                  </template>
-                  <template v-else>
-                    <el-button size="small" type="primary" plain round @click.stop="openCourseSchedule(course)">加入训练计划</el-button>
-                  </template>
-                  <el-button size="small" type="primary" round @click.stop="startQuickCourse(course)">直接开练</el-button>
+                  <el-button
+                    size="small"
+                    type="primary"
+                    plain
+                    round
+                    :disabled="isCourseSubscribed(course)"
+                    @click.stop="openCourseSchedule(course)"
+                  >
+                    {{ isCourseSubscribed(course) ? '已加入训练' : '加入训练计划' }}
+                  </el-button>
                 </div>
               </div>
             </div>
@@ -151,6 +158,36 @@
         </template>
 
         <!-- Other Health Modules -->
+        <template v-else-if="activeModuleKey === 'services'">
+          <div class="card-grid">
+            <div
+              v-for="svc in serviceCards"
+              :key="svc.key"
+              class="module-card premium-card training-card service-card"
+              @click="openServiceChat(svc)"
+            >
+              <div class="card-header-tags">
+                <el-tag size="small" effect="dark" :color="svc.tagColor" style="border:none">
+                  {{ svc.tag }}
+                </el-tag>
+                <el-tag v-if="svc.styleLabel" size="small" type="info" effect="plain">
+                  {{ svc.styleLabel }}
+                </el-tag>
+              </div>
+              <h3 class="card-title">{{ svc.title }}</h3>
+              <p class="card-desc">{{ svc.description }}</p>
+              <div class="plan-specs">
+                <div class="spec-item"><el-icon><Aim /></el-icon> {{ svc.presetTitle }}</div>
+                <div class="spec-item"><el-icon><Sparkles /></el-icon> 内置提示词</div>
+              </div>
+              <div class="card-actions">
+                <el-button size="small" type="primary" plain round>
+                  进入对话
+                </el-button>
+              </div>
+            </div>
+          </div>
+        </template>
         <template v-else>
           <div class="module-placeholder">
             <div class="placeholder-content premium-card">
@@ -241,23 +278,27 @@
           </el-button>
 
           <template v-if="detailedPlan.isCourse">
-            <template v-if="isCourseSubscribed(detailedPlan)">
-              <el-button type="success" size="large" round @click="router.push('/app/training?tab=courses')">去我的课程</el-button>
-            </template>
-            <template v-else>
-              <el-button type="primary" size="large" plain round @click="openCourseSchedule(detailedPlan)">加入训练计划</el-button>
-            </template>
-            <el-button type="primary" size="large" round @click="startQuickCourse(detailedPlan); showPlanDetail=false">直接开练</el-button>
+            <el-button
+              type="primary"
+              size="large"
+              plain
+              round
+              :disabled="isCourseSubscribed(detailedPlan)"
+              @click="openCourseSchedule(detailedPlan)"
+            >
+              {{ isCourseSubscribed(detailedPlan) ? '已加入训练' : '加入训练计划' }}
+            </el-button>
           </template>
           <template v-else>
-            <template v-if="isSubscribed(detailedPlan)">
-              <el-button type="success" size="large" round @click="router.push('/app/training')">去训练</el-button>
-            </template>
-            <template v-else>
-              <el-button type="primary" size="large" round @click="openSubscribeConfig(detailedPlan)">
-                加入训练计划
-              </el-button>
-            </template>
+            <el-button
+              type="primary"
+              size="large"
+              round
+              :disabled="isSubscribed(detailedPlan)"
+              @click="openSubscribeConfig(detailedPlan)"
+            >
+              {{ isSubscribed(detailedPlan) ? '已加入训练' : '加入训练计划' }}
+            </el-button>
           </template>
         </div>
       </template>
@@ -335,7 +376,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, Plus, Calendar, Timer, User, RefreshRight, Location, UserFilled, Aim, VideoCamera, Star, StarFilled, InfoFilled } from '@element-plus/icons-vue'
+import { Search, Plus, Calendar, Timer, User, RefreshRight, Location, UserFilled, Aim, Sparkles, VideoCamera, Star, StarFilled, InfoFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import request from '../api/request'
 
@@ -344,11 +385,55 @@ const route = useRoute()
 
 const healthModules = [
   { key: 'training', name: '运动训练', icon: '🏋️', subtitle: '发现并订阅专业训练计划', description: '包含各类有氧、力量、柔韧性训练计划' },
+  { key: 'services', name: '健康服务', icon: '🩺', subtitle: '为你提供专业健康支持', description: '健康咨询、康复评估、营养指导等服务入口即将上线' },
   { key: 'diet', name: '饮食管理', icon: '🥗', subtitle: '科学的饮食建议与营养知识', description: '卡路里追踪、营养均衡、饮食计划制定' },
   { key: 'sleep', name: '睡眠管理', icon: '😴', subtitle: '改善睡眠质量与作息规律', description: '睡眠数据分析、助眠建议、昼夜节律调整' },
   { key: 'weight', name: '体重管理', icon: '⚖️', subtitle: '科学减重或增重计划', description: 'BMI追踪、体脂率分析、体重趋势预测' },
   { key: 'heart', name: '心率血压', icon: '❤️', subtitle: '心血管健康监测与管理', description: '心率追踪、血压记录、心血管风险评估' },
   { key: 'mental', name: '心理健康', icon: '🧘', subtitle: '心理健康评估与正念练习', description: '压力管理、情绪追踪、冥想引导练习' },
+]
+
+const serviceCards = [
+  {
+    key: 'mental_counseling',
+    title: '心理咨询',
+    description: '情绪疏导、压力管理、正念引导，让你更稳定地面对当下。',
+    presetKey: 'mental_counseling',
+    presetTitle: '心理咨询（情绪疏导）',
+    styleLabel: '温和共情风',
+    tag: '情绪支持',
+    tagColor: '#60A5FA'
+  },
+  {
+    key: 'fitness_coach',
+    title: '健身带教',
+    description: '训练指导、动作要点、安全替代方案，按你的目标做可执行计划。',
+    presetKey: 'fitness_coach',
+    presetTitle: '健身带教（训练指导）',
+    styleLabel: '科学教练风',
+    tag: '训练指导',
+    tagColor: '#34D399'
+  },
+  {
+    key: 'rehab_coach',
+    title: '康复训练指导',
+    description: '循序渐进、安全边界、何时就医的提醒，让恢复更稳。',
+    presetKey: 'rehab_coach',
+    presetTitle: '康复评估（循序恢复）',
+    styleLabel: '循序渐进风',
+    tag: '恢复管理',
+    tagColor: '#F59E0B'
+  },
+  {
+    key: 'nutrition_coach',
+    title: '营养指导',
+    description: '饮食策略、替换建议与可坚持的规划，理性不夸张。',
+    presetKey: 'nutrition_coach',
+    presetTitle: '营养指导（饮食策略）',
+    styleLabel: '理性规划风',
+    tag: '饮食策略',
+    tagColor: '#A78BFA'
+  }
 ]
 
 const activeModuleKey = ref('training')
@@ -406,6 +491,24 @@ const switchModuleByKey = (key: string) => {
     fetchCourses()
     fetchMyCourses()
   }
+}
+
+const syncModuleWithRouteTab = (tab?: string) => {
+  if (tab === 'services') {
+    activeModuleKey.value = 'services'
+    return
+  }
+  activeModuleKey.value = 'training'
+}
+
+const openServiceChat = (svc: any) => {
+  router.push({
+    path: '/app/explore/webai',
+    query: {
+      preset: svc.presetKey,
+      style: svc.styleLabel
+    }
+  })
 }
 
 const fetchMyPlans = async () => {
@@ -620,9 +723,17 @@ const confirmCourseSchedule = async () => {
   }
   schedulingCourse.value = true
   try {
-    const formattedDates = courseScheduleDates.value.map(d => d.toISOString().split('T')[0])
+    // Ensure the course exists in user's personal course library
+    const subRes: any = await request.post(`/course/subscribe/${targetScheduleCourse.value.id}`)
+    const courseCloneId = subRes?.data ?? targetScheduleCourse.value.id
+    const formattedDates = courseScheduleDates.value.map(d => {
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${y}-${m}-${day}`
+    })
     await request.post('/daily/course', {
-      courseId: targetScheduleCourse.value.id,
+      courseId: courseCloneId,
       dates: formattedDates
     })
     ElMessage.success('已成功预约，在日历中查看！')
@@ -632,12 +743,6 @@ const confirmCourseSchedule = async () => {
   } catch (e) {} finally {
     schedulingCourse.value = false
   }
-}
-
-const startQuickCourse = async (course: any) => {
-  // Phase 4: will redirect to immersive training mode
-  // For now, fast-track to training page route mapping or mock start
-  router.push(`/app/training?tab=courses&start=${course.id}`)
 }
 
 // Helpers for preview
@@ -664,11 +769,16 @@ const getCardTheme = (cateStr: string) => {
 }
 
 onMounted(() => {
+  syncModuleWithRouteTab(route.query.tab as string | undefined)
   fetchPlans()
   fetchMyPlans()
   fetchCourses()
   fetchMyCourses()
   fetchCollections()
+})
+
+watch(() => route.query.tab, (tab) => {
+  syncModuleWithRouteTab(tab as string | undefined)
 })
 </script>
 

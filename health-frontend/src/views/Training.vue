@@ -2,9 +2,71 @@
   <div class="training-dashboard">
     <!-- Main Content Area -->
     <div class="main-body" v-loading="loading">
-      
+
+      <!-- Training Dashboard (Global Overview) -->
+      <template v-if="activeMenu === 'overview'">
+        <div class="overview-wrap">
+          <div class="overview-top-stats">
+            <div class="stat-card">
+              <div class="stat-label">累计训练时长</div>
+              <div class="stat-value">{{ formatMinutes(overviewSummary.totalDurationMinutes) }}</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">连续训练天数</div>
+              <div class="stat-value">{{ overviewSummary.currentStreakDays }} 天</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">完成训练次数</div>
+              <div class="stat-value">{{ overviewSummary.completedCount }} 次</div>
+            </div>
+          </div>
+
+          <div class="overview-chart-card">
+            <div class="overview-section-title">最近七天运动趋势</div>
+            <div ref="trendChartRef" class="trend-chart"></div>
+          </div>
+
+          <div class="overview-bottom">
+            <div class="recent-card">
+              <div class="overview-section-title">最近十条训练数据</div>
+              <div class="commit-timeline">
+                <div v-if="recentTrainings.length === 0" class="empty-subtle">暂无训练记录</div>
+                <div v-for="(item, idx) in recentTrainings" :key="idx" class="commit-item">
+                  <div class="commit-left">
+                    <div class="commit-dot" />
+                    <div v-if="idx !== recentTrainings.length - 1" class="commit-line" />
+                  </div>
+                  <div class="commit-body">
+                    <div class="commit-meta">{{ formatDateShort(item.date) }} • {{ item.durationMinutes }} 分钟</div>
+                    <div class="commit-title">{{ item.title }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="today-card">
+              <div class="overview-section-title">今日训练安排</div>
+              <div v-if="todaySchedules.length === 0" class="empty-subtle">今天暂无安排</div>
+              <div v-else class="today-list">
+                <div
+                  v-for="sched in todaySchedules"
+                  :key="sched.id"
+                  class="today-item"
+                >
+                  <div class="today-item-top">
+                    <div class="today-title">{{ sched.title }}</div>
+                    <div class="today-status">{{ formatScheduleStatus(sched.status) }}</div>
+                  </div>
+                  <div class="today-desc">{{ sched.description }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+
       <!-- Training Diary (Calendar View) -->
-      <template v-if="activeMenu === 'calendar'">
+      <template v-else-if="activeMenu === 'calendar'">
         <div class="calendar-layout">
           <div class="calendar-left">
             <h3 class="view-title">日程安排 ({{ currentMonth }})</h3>
@@ -45,8 +107,7 @@
                     <h4>{{ sched.title }}</h4>
                     <span class="tc-status" :class="getTaskStatusClass(sched)">{{ mapStatus(sched.status, sched.date) }}</span>
                   </div>
-                  <!-- Cancel Plan Button (If this schedule belongs to an active plan) -->
-                  <el-button size="small" type="danger" text @click="handleCancelPlan(sched.planId)">取消计划退出</el-button>
+                  <el-button size="small" type="danger" text @click="handleCancelTraining(sched)">取消训练</el-button>
                 </div>
                 
                 <p class="tc-desc">{{ sched.description }}</p>
@@ -63,6 +124,18 @@
                   <template v-if="sched.status === 'COMPLETED'">
                     <div class="success-msg"><el-icon><Check /></el-icon> 任务已完成打卡，真棒！</div>
                   </template>
+                  <template v-else-if="sched.status === 'PAUSED'">
+                    <div class="skipped-msg">该任务已暂停</div>
+                    <el-button
+                      v-if="sched.date >= todayStr"
+                      size="small"
+                      type="primary"
+                      plain
+                      @click="handleResumeSchedule(sched)"
+                    >
+                      恢复训练
+                    </el-button>
+                  </template>
                   <template v-else-if="sched.status === 'SKIPPED'">
                     <div class="skipped-msg">该任务已被跳过</div>
                   </template>
@@ -76,22 +149,21 @@
                   </template>
                   <template v-else>
                     <!-- Today: Skip and Start Options -->
-                    <el-button @click="handleSkipSchedule(sched.id)">跳过</el-button>
-                    <el-button type="success" @click="openImmersiveTraining(sched, 'SCHEDULE')">开始训练日程</el-button>
+                    <el-button size="small" type="primary" plain @click="handlePostponeSchedule(sched)">改期</el-button>
+                    <el-button size="small" type="warning" plain @click="handlePauseSchedule(sched)">暂停训练</el-button>
+                    <el-button
+                      size="small"
+                      v-if="sched.sourceType === 'PLAN'"
+                      type="danger"
+                      plain
+                      @click="handleResetPlanProgress(sched)"
+                    >
+                      重置计划
+                    </el-button>
+                    <el-button size="small" plain @click="handleSkipSchedule(sched.id)">跳过</el-button>
+                    <el-button size="small" type="success" @click="openImmersiveTraining(sched, 'SCHEDULE')">开始训练</el-button>
                   </template>
                 </div>
-              </div>
-            </div>
-
-            <!-- Stats Module -->
-            <div class="stats-module premium-card mt-4">
-              <h4>累计训练数据</h4>
-              <div class="stats-grid">
-                <div class="stat-item">
-                  <div class="s-val">{{ totalRecords }} <span class="s-unit">次</span></div>
-                  <div class="s-lbl">总计完成打卡</div>
-                </div>
-                <!-- Extendable with duration/records -->
               </div>
             </div>
 
@@ -134,7 +206,6 @@
                </div>
                <div class="card-actions mt-3">
                  <el-button size="small" type="danger" text @click="handleRemoveCourse(course.id)">移除</el-button>
-                 <el-button size="small" type="success" round @click="openImmersiveTraining(course, 'COURSE')">立即开练</el-button>
                </div>
             </div>
             <el-empty v-if="myCourses.length === 0" description="暂无收藏的单次课程" />
@@ -275,19 +346,42 @@
         <el-button type="primary" size="large" @click="submitImmersiveCheckIn" :loading="checkingIn" style="width: 100%; border-radius: 12px;">提交反馈</el-button>
       </template>
     </el-dialog>
+
+    <!-- Postpone Dialog -->
+    <el-dialog v-model="postponeDialogVisible" title="改期" width="450px" align-center destroy-on-close>
+      <el-form label-position="top">
+        <el-form-item label="选择新的训练日期">
+          <el-date-picker
+            v-model="postponeTargetDate"
+            type="date"
+            placeholder="选择日期"
+            style="width: 100%"
+            :disabled-date="disabledPostponeDate"
+          />
+        </el-form-item>
+        <div style="background: #EFF6FF; padding: 12px; border-radius: 8px; font-size: 13px; color: #1D4ED8;">
+          将把当前任务（以及计划的后续待执行任务）按顺序移动到所选日期。
+        </div>
+      </el-form>
+      <template #footer>
+        <el-button @click="postponeDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="postponing" @click="confirmPostpone">确认改期</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch, nextTick, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { Calendar, Star, Edit, Plus, Check, Trophy, Lightning, Lock } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import * as echarts from 'echarts'
 import request from '../api/request'
 
 const router = useRouter()
 const route = useRoute()
-const activeMenu = computed(() => (route.query.tab as string) || 'calendar')
+const activeMenu = computed(() => (route.query.tab as string) || 'overview')
 const loading = ref(false)
 const myTrainingTab = ref('plans') // internal switcher for My Training
 
@@ -299,10 +393,46 @@ const myCourses = ref<any[]>([])
 const favoritePlans = ref<any[]>([])
 const favoriteCourses = ref<any[]>([])
 const favoriteTab = ref('plans') // internal switcher for favorites
-const totalRecords = ref(0)
 
 // Today's date string for calendar restriction
 const todayStr = new Date().toISOString().split('T')[0]
+
+// --- Training Dashboard (Global Overview) ---
+const overviewSummary = ref<{ totalDurationMinutes: number; currentStreakDays: number; completedCount: number }>({
+  totalDurationMinutes: 0,
+  currentStreakDays: 0,
+  completedCount: 0
+})
+const recentTrainings = ref<Array<{ date: string; title: string; durationMinutes: number }>>([])
+const todaySchedules = ref<any[]>([])
+
+const trendChartRef = ref<HTMLElement | null>(null)
+let trendChart: any = null
+const overviewTrend = ref<{ labels: string[]; durations: number[] }>({ labels: [], durations: [] })
+
+const formatMinutes = (minutes: number) => {
+  const v = minutes || 0
+  const h = Math.floor(v / 60)
+  const m = v % 60
+  if (h <= 0) return `${m} 分钟`
+  return `${h} 小时 ${m} 分钟`
+}
+
+const formatDateShort = (dateStr: string) => {
+  if (!dateStr) return ''
+  const d = new Date(`${dateStr}T00:00:00`)
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${mm}-${dd}`
+}
+
+const formatScheduleStatus = (status: string) => {
+  if (status === 'COMPLETED') return '已完成'
+  if (status === 'PAUSED') return '已暂停'
+  if (status === 'SKIPPED') return '已跳过'
+  if (status === 'PENDING') return '待执行'
+  return status || ''
+}
 
 const currentMonth = computed(() => {
   const d = selectedDate.value
@@ -362,6 +492,85 @@ const fetchMyCourses = async () => {
     } catch(e) {}
 }
 
+const fetchTrainingDashboardOverview = async () => {
+  try {
+    loading.value = true
+    const [summaryRes, trendRes, recentRes, todayRes] = await Promise.all([
+      request.get('/training/dashboard/summary'),
+      request.get('/training/dashboard/trend?days=7'),
+      request.get('/training/dashboard/recent?limit=10'),
+      request.get('/daily/today')
+    ])
+
+    overviewSummary.value = summaryRes.data || overviewSummary.value
+    overviewTrend.value.labels = trendRes.data?.labels || []
+    overviewTrend.value.durations = trendRes.data?.durations || []
+    recentTrainings.value = recentRes.data?.items || []
+    todaySchedules.value = todayRes.data || []
+
+    await nextTick()
+    initTrendChart()
+  } catch(e) {
+    // keep page usable even if some endpoints fail
+  } finally {
+    loading.value = false
+  }
+}
+
+const initTrendChart = () => {
+  if (!trendChartRef.value) return
+  if (trendChart) trendChart.dispose()
+  trendChart = echarts.init(trendChartRef.value)
+
+  const labels = overviewTrend.value.labels || []
+  const durations = overviewTrend.value.durations || []
+
+  trendChart.setOption({
+    tooltip: {
+      trigger: 'axis'
+    },
+    grid: { left: 10, right: 10, top: 30, bottom: 20, containLabel: true },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: labels
+    },
+    yAxis: {
+      type: 'value',
+      name: '分钟'
+    },
+    series: [
+      {
+        name: '训练时长',
+        type: 'line',
+        smooth: true,
+        data: durations,
+        lineStyle: { width: 3, color: '#409EFF' },
+        itemStyle: { color: '#409EFF' },
+        areaStyle: {
+          color: 'rgba(64, 158, 255, 0.18)'
+        }
+      }
+    ]
+  })
+}
+
+watch(
+  () => activeMenu.value,
+  async (tab) => {
+    if (tab === 'overview') {
+      await fetchTrainingDashboardOverview()
+    }
+  }
+)
+
+onUnmounted(() => {
+  if (trendChart) {
+    trendChart.dispose()
+    trendChart = null
+  }
+})
+
 const fetchFavorites = async () => {
   loading.value = true
   try {
@@ -381,16 +590,10 @@ const fetchFavorites = async () => {
   }
 }
 
-const fetchStats = async () => {
-  try {
-    const res: any = await request.get('/daily/records')
-    totalRecords.value = (res.data || []).length
-  } catch(e) {}
-}
-
 // Schedule Operations
 const mapStatus = (s: string, dateStr: string) => {
   if(s==='COMPLETED') return '已完成'
+  if(s==='PAUSED') return '已暂停'
   if(s==='SKIPPED') return '已跳过'
   const today = new Date().toISOString().split('T')[0]
   if (dateStr < today) return '未完成'
@@ -399,6 +602,7 @@ const mapStatus = (s: string, dateStr: string) => {
 
 const getTaskStatusClass = (sched: any) => {
   if (sched.status === 'COMPLETED') return 'status-COMPLETED'
+  if (sched.status === 'PAUSED') return 'status-SKIPPED'
   if (sched.status === 'SKIPPED') return 'status-SKIPPED'
   const today = new Date().toISOString().split('T')[0]
   if (sched.date < today) return 'status-MISSED'
@@ -407,6 +611,7 @@ const getTaskStatusClass = (sched: any) => {
 
 const getScheduleCellClass = (s: any) => {
   if (s.status === 'COMPLETED') return 'completed'
+  if (s.status === 'PAUSED') return 'skipped'
   if (s.status === 'SKIPPED') return 'skipped'
   const today = new Date().toISOString().split('T')[0]
   if (s.date < today) return 'missed'
@@ -422,6 +627,28 @@ const parseActions = (json: string) => {
   try { return JSON.parse(json) } catch { return [] }
 }
 
+const postponeDialogVisible = ref(false)
+const postponing = ref(false)
+const postponeTargetSchedule = ref<any>(null)
+const postponeTargetDate = ref<Date>(new Date())
+const postponeMinTime = ref<number>(0)
+
+const parseLocalDate = (dateStr: string) => {
+  // Backend uses LocalDate (YYYY-MM-DD), force parse as local midnight.
+  return new Date(`${dateStr}T00:00:00`)
+}
+
+const formatDateOnly = (d: Date) => {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
+const disabledPostponeDate = (time: Date) => {
+  return time.getTime() < postponeMinTime.value
+}
+
 const handleSkipSchedule = async (id: number, silent=false) => {
   try {
     if (!silent) {
@@ -429,6 +656,95 @@ const handleSkipSchedule = async (id: number, silent=false) => {
     }
     await request.post(`/daily/${id}/skip`)
     if (!silent) ElMessage.success('已跳过')
+    await fetchMonthSchedules(selectedDate.value)
+  } catch(e) {}
+}
+
+const handlePostponeSchedule = async (sched: any) => {
+  postponeTargetSchedule.value = sched
+  const original = parseLocalDate(String(sched.date))
+  const minDate = new Date(original)
+  // Only allow "later" postpone to avoid reversing order.
+  minDate.setDate(minDate.getDate() + 1)
+  postponeMinTime.value = minDate.getTime()
+  postponeTargetDate.value = minDate
+  postponeDialogVisible.value = true
+}
+
+const handlePauseSchedule = async (sched: any) => {
+  try {
+    await ElMessageBox.confirm(
+      '将从当前任务开始，把后续训练日程全部设为暂停状态，是否继续？',
+      '暂停训练确认',
+      { type: 'warning' }
+    )
+    await request.post(`/daily/${sched.id}/pause`)
+    ElMessage.success('暂停训练成功')
+    await fetchMonthSchedules(selectedDate.value)
+  } catch(e) {}
+}
+
+const handleResumeSchedule = async (sched: any) => {
+  try {
+    await ElMessageBox.confirm(
+      '将恢复当前及后续已暂停的训练日程，是否继续？',
+      '恢复训练确认',
+      { type: 'info' }
+    )
+    await request.post(`/daily/${sched.id}/resume`)
+    ElMessage.success('恢复训练成功')
+    await fetchMonthSchedules(selectedDate.value)
+  } catch(e) {}
+}
+
+const confirmPostpone = async () => {
+  if (!postponeTargetSchedule.value) return
+  try {
+    postponing.value = true
+    const sched = postponeTargetSchedule.value
+    const targetDateStr = formatDateOnly(postponeTargetDate.value)
+    await request.post(`/daily/${sched.id}/postpone`, { targetDate: targetDateStr })
+    ElMessage.success('改期成功')
+    postponeDialogVisible.value = false
+    const nextSelected = new Date(`${targetDateStr}T00:00:00`)
+    selectedDate.value = nextSelected
+    await fetchMonthSchedules(nextSelected)
+  } catch(e) {
+  } finally {
+    postponing.value = false
+  }
+}
+
+const handleResetPlanProgress = async (sched: any) => {
+  if (sched.sourceType !== 'PLAN' || !sched.planId) return
+  try {
+    await ElMessageBox.confirm(
+      '该操作会将此训练计划进度清零，并从第一天重新生成日程，是否继续？',
+      '重置确认',
+      { type: 'warning' }
+    )
+    await request.post(`/daily/${sched.id}/reset`)
+    ElMessage.success('训练计划已重置')
+    await fetchAllMyPlans()
+    await fetchMonthSchedules(selectedDate.value)
+  } catch(e) {}
+}
+
+const handleCancelTraining = async (sched: any) => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要取消该训练安排吗？',
+      '取消训练确认',
+      { type: 'warning' }
+    )
+    if (sched.sourceType === 'PLAN' && sched.planId) {
+      await request.post(`/training/unsubscribe/${sched.planId}`)
+      ElMessage.success('已取消训练计划')
+      fetchAllMyPlans()
+    } else {
+      await request.delete(`/daily/${sched.id}`)
+      ElMessage.success('已取消训练安排')
+    }
     await fetchMonthSchedules(selectedDate.value)
   } catch(e) {}
 }
@@ -459,7 +775,6 @@ const handleRemoveCourse = async (courseId: number) => {
     ElMessage.success('单次课程已移除')
     fetchMyCourses()
     fetchMonthSchedules(selectedDate.value)
-    fetchStats()
   } catch(e) {}
 }
 
@@ -611,7 +926,6 @@ const submitImmersiveCheckIn = async () => {
     }
     ElMessage.success('反馈已记录至健康档案 🎉')
     checkInVisible.value = false
-    await fetchStats()
   } catch(e) {
     ElMessage.error('提交失败，请重试')
   } finally {
@@ -652,8 +966,11 @@ watch(() => route.query.tab, (newTab) => {
 onMounted(async () => {
   await fetchAllMyPlans()
   await fetchMyCourses()
-  fetchMonthSchedules(selectedDate.value)
-  fetchStats()
+  if (route.query.tab === 'overview') {
+    await fetchTrainingDashboardOverview()
+  } else {
+    fetchMonthSchedules(selectedDate.value)
+  }
   
   // process start query param if exists post fetch
   if (route.query.start) {
@@ -821,7 +1138,10 @@ onMounted(async () => {
 .tc-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  width: 100%;
 }
 
 .success-msg { color: #10B981; font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 4px; }
@@ -859,23 +1179,6 @@ onMounted(async () => {
 .card-title { font-size: 16px; font-weight: 800; color: #1E293B; margin: 0 0 8px; line-height: 1.4; }
 .card-desc { font-size: 13px; color: #64748B; line-height: 1.5; margin: 0; }
 
-.stats-module h4 {
-  margin: 0 0 12px;
-}
-.stats-grid {
-  display: flex;
-  gap: 16px;
-}
-.stat-item {
-  background: #F8FAFC;
-  padding: 16px;
-  border-radius: 8px;
-  flex: 1;
-  text-align: center;
-}
-.s-val { font-size: 24px; font-weight: 900; color: #3B82F6; }
-.s-unit { font-size: 12px; font-weight: normal; color: #94A3B8; }
-.s-lbl { font-size: 12px; color: #64748B; margin-top: 4px; }
 .mt-4 { margin-top: 24px; }
 .mt-3 { margin-top: 16px; }
 .mt-2 { margin-top: 8px; }
@@ -949,6 +1252,192 @@ onMounted(async () => {
   padding: 16px;
   border-radius: 8px;
   border-left: 4px solid #3B82F6;
+}
+
+/* Training Dashboard Styles */
+.overview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.overview-top-stats {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.stat-card {
+  flex: 1;
+  min-width: 220px;
+  padding: 18px;
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+}
+
+.stat-label {
+  color: #64748B;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+
+.stat-value {
+  font-size: 26px;
+  font-weight: 900;
+  color: #1E293B;
+}
+
+.overview-chart-card {
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.overview-section-title {
+  font-size: 18px;
+  font-weight: 900;
+  color: #1E293B;
+  margin-bottom: 12px;
+}
+
+.trend-chart {
+  height: 260px;
+  width: 100%;
+}
+
+.overview-bottom {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.recent-card,
+.today-card {
+  background: #fff;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.recent-card {
+  flex: 1.1;
+  min-width: 420px;
+}
+
+.today-card {
+  flex: 0.9;
+  min-width: 320px;
+}
+
+.empty-subtle {
+  color: #94A3B8;
+  font-size: 14px;
+  padding: 8px 0;
+}
+
+.commit-timeline {
+  padding-top: 6px;
+}
+
+.commit-item {
+  display: flex;
+  gap: 12px;
+  position: relative;
+  padding: 6px 0;
+}
+
+.commit-left {
+  width: 26px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.commit-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #409EFF;
+  box-shadow: 0 0 0 3px rgba(64, 158, 255, 0.18);
+}
+
+.commit-line {
+  width: 2px;
+  flex: 1;
+  background: #E5E7EB;
+  margin-top: 6px;
+}
+
+.commit-body {
+  flex: 1;
+}
+
+.commit-meta {
+  color: #94A3B8;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.commit-title {
+  color: #1E293B;
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1.3;
+}
+
+.today-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.today-item {
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid #F1F5F9;
+  background: #F8FAFC;
+}
+
+.today-item-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.today-title {
+  font-size: 14px;
+  font-weight: 900;
+  color: #1E293B;
+}
+
+.today-status {
+  font-size: 12px;
+  font-weight: 800;
+  color: #64748B;
+  white-space: nowrap;
+}
+
+.today-desc {
+  font-size: 13px;
+  color: #64748B;
+  line-height: 1.4;
+}
+
+@media (max-width: 1100px) {
+  .overview-bottom {
+    flex-direction: column;
+  }
+
+  .recent-card,
+  .today-card {
+    min-width: unset;
+    width: 100%;
+  }
 }
 
 </style>

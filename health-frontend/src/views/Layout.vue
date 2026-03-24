@@ -13,7 +13,7 @@
       >
         <template v-if="userInfo.role !== 'ADMIN'">
           <el-menu-item index="explore">探索</el-menu-item>
-          <el-menu-item index="training">训练日程</el-menu-item>
+          <el-menu-item index="training">训练</el-menu-item>
           <el-menu-item index="community">社区</el-menu-item>
           <el-menu-item index="mine">我的</el-menu-item>
         </template>
@@ -51,6 +51,10 @@
               <el-icon><Timer /></el-icon>
               <span>单次课程</span>
             </el-menu-item>
+            <el-menu-item index="/app/explore?tab=services">
+              <el-icon><Aim /></el-icon>
+              <span>健康服务</span>
+            </el-menu-item>
             <el-menu-item index="/app/exercises">
               <el-icon><Bicycle /></el-icon>
               <span>动作库</span>
@@ -58,6 +62,10 @@
           </template>
 
           <template v-else-if="activeTopModule === 'training'">
+            <el-menu-item index="/app/training?tab=overview">
+              <el-icon><TrendCharts /></el-icon>
+              <span>全局数据</span>
+            </el-menu-item>
             <el-menu-item index="/app/training?tab=calendar">
               <el-icon><Calendar /></el-icon>
               <span>训练日程</span>
@@ -136,7 +144,7 @@ const handleTopMenuSelect = (val: string) => {
   } else if (val === 'explore') {
     router.push('/app/explore')
   } else if (val === 'training') {
-    router.push('/app/training?tab=calendar')
+    router.push('/app/training?tab=overview')
   } else if (val === 'mine') {
     router.push('/app/dashboard')
   } else if (val === 'admin') {
@@ -173,8 +181,10 @@ const activeSidebarItem = computed(() => {
   if (route.path === '/app/training') {
     return route.query.tab ? `/app/training?tab=${route.query.tab}` : '/app/training?tab=calendar'
   }
-  if (route.path === '/app/explore') {
-    return route.query.tab ? `/app/explore?tab=${route.query.tab}` : '/app/explore?tab=plans'
+  if (route.path.startsWith('/app/explore')) {
+    if (route.query.tab) return `/app/explore?tab=${route.query.tab}`
+    // For nested explore routes (e.g. /app/explore/webai), default to services highlight.
+    return '/app/explore?tab=services'
   }
   return route.path
 })
