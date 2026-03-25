@@ -48,99 +48,49 @@
       <!-- Center Post Feed -->
       <main class="community-feed" v-loading="loading">
         <template v-if="activeTab === 'activityCenter'">
-          <!-- Activity detail -->
-          <template v-if="activeActivityId">
-            <div class="activity-detail-wrap">
-              <div class="activity-detail-header">
-                <el-button link type="primary" @click="activeActivityId = null">返回活动列表</el-button>
-                <div class="activity-detail-title">{{ activeActivity?.title || '' }}</div>
-              </div>
-              <div class="activity-detail-time" v-if="activeActivity">
-                {{ formatDateRange(activeActivity.startTime, activeActivity.endTime) }}
-              </div>
+          <div class="activity-list-wrap">
+            <div class="activity-list-header">
+              <div class="activity-list-title">活动中心</div>
+              <div class="activity-list-sub">点击活动卡片查看详情，报名后从活动开始时间起插入连续训练任务</div>
+            </div>
 
-              <div class="activity-detail-meta-row" v-if="activeActivity">
-                <el-tag v-if="activeActivity.pinned === 1" type="success" size="small" effect="plain">置顶</el-tag>
-                <el-tag :type="activeActivity.status === 'ONLINE' ? 'info' : 'danger'" size="small" effect="plain">
-                  {{ activeActivity.status === 'ONLINE' ? '在线' : '下线' }}
-                </el-tag>
-                <el-tag type="primary" size="small" effect="plain">{{ activeActivity.requiredDays }} 天要求</el-tag>
-                <el-tag type="warning" size="small" effect="plain">{{ activeActivity.templateType }}</el-tag>
-              </div>
+            <div v-if="activities.length === 0" class="empty-subtle">
+              暂无活动
+            </div>
 
-              <div class="activity-detail-description" v-if="activeActivity?.descriptionHtml" v-html="activeActivity.descriptionHtml" />
-
-              <div class="activity-completed-block">
-                <div class="completed-block-title">活动内容区（完成用户）</div>
-
-                <div v-if="activityCompletedItems.length === 0" class="empty-subtle">
-                  暂无完成记录
+            <div v-else class="activity-card-grid">
+              <div
+                v-for="act in activities"
+                :key="act.id"
+                class="activity-card"
+              >
+                <div class="activity-card-main" @click="openActivityDetail(act.id)">
+                  <div class="activity-card-title">{{ act.title }}</div>
+                  <div class="activity-card-meta">
+                    {{ formatDateRange(act.startTime, act.endTime) }} · {{ act.requiredDays }} 天
+                    <span v-if="act.templateType"> · {{ act.templateType }}</span>
+                  </div>
+                  <div class="activity-card-tags">
+                    <el-tag v-if="act.pinned === 1" type="success" size="small" effect="plain">置顶</el-tag>
+                    <el-tag :type="act.status === 'ONLINE' ? 'info' : 'danger'" size="small" effect="plain">
+                      {{ act.status === 'ONLINE' ? '在线' : '下线' }}
+                    </el-tag>
+                  </div>
                 </div>
-
-                <div
-                  v-for="item in activityCompletedItems"
-                  :key="item.participationId"
-                  class="completed-item"
-                >
-                  <div class="completed-top">
-                    <div class="completed-nick">{{ item.nickname || ('用户 #' + item.userId) }}</div>
-                    <div class="completed-time">{{ formatTime(item.completedTime) }}</div>
-                  </div>
-                  <div class="completed-dynamic" v-html="item.content" />
-                  <div class="completed-actions">
-                    <el-button size="small" type="primary" plain @click="handleForwardActivityDynamic(item)">转发</el-button>
-                  </div>
+                <div class="activity-card-actions">
+                  <el-button
+                    size="small"
+                    type="primary"
+                    plain
+                    :loading="applyActivityLoadingId === act.id"
+                    @click.stop="applyActivity(act.id)"
+                  >
+                    报名
+                  </el-button>
                 </div>
               </div>
             </div>
-          </template>
-
-          <!-- Activity list -->
-          <template v-else>
-            <div class="activity-list-wrap">
-              <div class="activity-list-header">
-                <div class="activity-list-title">活动中心</div>
-                <div class="activity-list-sub">报名后从活动开始时间起插入连续训练任务，完成后生成打卡动态</div>
-              </div>
-
-              <div v-if="activities.length === 0" class="empty-subtle">
-                暂无活动
-              </div>
-
-              <div v-else class="activity-card-grid">
-                <div
-                  v-for="act in activities"
-                  :key="act.id"
-                  class="activity-card"
-                >
-                  <div class="activity-card-main" @click="openActivityDetail(act.id)">
-                    <div class="activity-card-title">{{ act.title }}</div>
-                    <div class="activity-card-meta">
-                      {{ formatDateRange(act.startTime, act.endTime) }} · {{ act.requiredDays }} 天
-                      <span v-if="act.templateType"> · {{ act.templateType }}</span>
-                    </div>
-                    <div class="activity-card-tags">
-                      <el-tag v-if="act.pinned === 1" type="success" size="small" effect="plain">置顶</el-tag>
-                      <el-tag :type="act.status === 'ONLINE' ? 'info' : 'danger'" size="small" effect="plain">
-                        {{ act.status === 'ONLINE' ? '在线' : '下线' }}
-                      </el-tag>
-                    </div>
-                  </div>
-                  <div class="activity-card-actions">
-                    <el-button
-                      size="small"
-                      type="primary"
-                      plain
-                      :loading="applyActivityLoadingId === act.id"
-                      @click.stop="applyActivity(act.id)"
-                    >
-                      报名
-                    </el-button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </template>
+          </div>
         </template>
 
         <template v-else>
@@ -223,7 +173,7 @@
       </main>
 
       <!-- Right Sidebar -->
-      <aside class="community-right">
+      <aside v-if="activeTab !== 'activityCenter'" class="community-right">
         <div class="right-card premium-card">
           <div class="right-title">🔥 热门话题</div>
           <div
@@ -256,6 +206,58 @@
         </div>
       </aside>
     </div>
+
+    <el-dialog v-model="activityDialogVisible" :title="activityDetail?.title || '活动详情'" width="720px" align-center destroy-on-close>
+      <div v-loading="activityDetailLoading" class="activity-modal">
+        <div v-if="activityDetail" class="activity-detail-wrap">
+          <div class="activity-detail-time">
+            {{ formatDateRange(activityDetail.startTime, activityDetail.endTime) }}
+          </div>
+
+          <div class="activity-detail-meta-row">
+            <el-tag v-if="activityDetail.pinned === 1" type="success" size="small" effect="plain">置顶</el-tag>
+            <el-tag :type="activityDetail.status === 'ONLINE' ? 'info' : 'danger'" size="small" effect="plain">
+              {{ activityDetail.status === 'ONLINE' ? '在线' : '下线' }}
+            </el-tag>
+            <el-tag type="primary" size="small" effect="plain">{{ activityDetail.requiredDays }} 天要求</el-tag>
+            <el-tag type="warning" size="small" effect="plain">{{ activityDetail.templateType }}</el-tag>
+          </div>
+
+          <div class="activity-detail-description" v-if="activityDetail.descriptionHtml" v-html="activityDetail.descriptionHtml" />
+
+          <div class="activity-actions">
+            <el-button v-if="activityDetail.id && !isJoined(activityDetail.id)" type="success" round :loading="applyActivityLoadingId === activityDetail.id" @click="applyActivity(activityDetail.id)">立即报名</el-button>
+            <el-button v-else type="primary" round plain disabled>已报名</el-button>
+          </div>
+
+          <div class="activity-completed-block">
+            <div class="completed-block-title">活动内容区（完成用户）</div>
+
+            <div v-if="activityCompletedItems.length === 0" class="empty-subtle">
+              暂无完成记录
+            </div>
+
+            <div
+              v-for="item in activityCompletedItems"
+              :key="item.participationId"
+              class="completed-item"
+            >
+              <div class="completed-top">
+                <div class="completed-nick">{{ item.nickname || ('用户 #' + item.userId) }}</div>
+                <div class="completed-time">{{ formatTime(item.completedTime) }}</div>
+              </div>
+              <div class="completed-dynamic" v-html="item.content" />
+              <div class="completed-actions">
+                <el-button size="small" type="primary" plain @click="handleForwardActivityDynamic(item)">转发</el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="activityDialogVisible = false" round>关闭</el-button>
+      </template>
+    </el-dialog>
 
     <!-- Post Detail Dialog -->
     <el-dialog v-model="postDialogVisible" :title="selectedPost?.title" width="680px" align-center destroy-on-close>
@@ -396,6 +398,9 @@ const trendingActivities = ref<any[]>([])
 const activeActivityId = ref<number | null>(null)
 const activityCompletedItems = ref<any[]>([])
 const applyActivityLoadingId = ref<number | null>(null)
+const activityDialogVisible = ref(false)
+const activityDetailLoading = ref(false)
+const activityDetail = ref<any>(null)
 
 // Mocking current user ID (should ideally come from store)
 const currentUserId = ref(0) 
@@ -465,12 +470,20 @@ const fetchActivityCompleted = async (activityId: number) => {
 }
 
 const openActivityDetail = async (activityId: number) => {
-  // Ensure we switch to the standalone Activity Center view.
-  activeTab.value = 'activityCenter'
+  activityDialogVisible.value = true
+  activityDetailLoading.value = true
   activeActivityId.value = activityId
-  isSearchMode.value = false
-  if (activities.value.length === 0) await fetchActivities()
-  await fetchActivityCompleted(activityId)
+  try {
+    if (activities.value.length === 0) await fetchActivities()
+    const res: any = await request.get(`/activity/${activityId}`)
+    activityDetail.value = res.data
+    await fetchActivityCompleted(activityId)
+  } catch (e) {
+    activityDetail.value = null
+    activityCompletedItems.value = []
+  } finally {
+    activityDetailLoading.value = false
+  }
 }
 
 const applyActivity = async (activityId: number) => {
@@ -490,7 +503,7 @@ const applyActivity = async (activityId: number) => {
 }
 
 const handleForwardActivityDynamic = (item: any) => {
-  const title = `我完成了活动《${activeActivity?.title || '活动'}》`
+  const title = `我完成了活动《${activityDetail.value?.title || activeActivity.value?.title || '活动'}》`
   const content = `${item.content}\n\n#活动打卡 #健康管理`
   openPostDialog({ title, content })
 }

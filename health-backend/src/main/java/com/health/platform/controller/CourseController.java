@@ -30,17 +30,13 @@ public class CourseController {
     @Autowired
     private TrainingRecordMapper recordMapper;
 
-    public static class RecordReq {
-        private Integer completeDuration;
-        private String difficulty;
-        private String feeling;
-
-        public Integer getCompleteDuration() { return completeDuration; }
-        public void setCompleteDuration(Integer completeDuration) { this.completeDuration = completeDuration; }
-        public String getDifficulty() { return difficulty; }
-        public void setDifficulty(String difficulty) { this.difficulty = difficulty; }
-        public String getFeeling() { return feeling; }
-        public void setFeeling(String feeling) { this.feeling = feeling; }
+    public static class ScheduleCourseReq {
+        private Integer courseId;
+        private List<String> dates;
+        public Integer getCourseId() { return courseId; }
+        public void setCourseId(Integer courseId) { this.courseId = courseId; }
+        public List<String> getDates() { return dates; }
+        public void setDates(List<String> dates) { this.dates = dates; }
     }
 
     @Operation(summary = "Get public course library")
@@ -67,6 +63,36 @@ public class CourseController {
                 .eq(Course::getCreatorId, userId)
                 .eq(Course::getIsPublic, false)
                 .orderByDesc(Course::getCreateTime)));
+    }
+
+    @Operation(summary = "Create or update my private course")
+    @PostMapping("/save")
+    public Result<Void> save(@RequestBody Course course) {
+        Integer userId = StpUtil.getLoginIdAsInt();
+
+        if (course.getId() == null) {
+            course.setCreatorId(userId);
+            course.setIsPublic(false);
+            course.setCreateTime(java.time.LocalDateTime.now());
+            courseMapper.insert(course);
+            return Result.success();
+        }
+
+        Course old = courseMapper.selectById(course.getId());
+        if (old == null) return Result.error("Course not found");
+        if (!userId.equals(old.getCreatorId()) && !StpUtil.hasRole("ADMIN")) {
+            return Result.error("Permission denied");
+        }
+
+        course.setCreatorId(old.getCreatorId());
+        if (!StpUtil.hasRole("ADMIN")) {
+            course.setIsPublic(false);
+        }
+        if (course.getCreateTime() == null) {
+            course.setCreateTime(old.getCreateTime());
+        }
+        courseMapper.updateById(course);
+        return Result.success();
     }
 
     @Operation(summary = "Subscribe to a course")
@@ -120,6 +146,19 @@ public class CourseController {
             courseMapper.deleteById(id);
         }
         return Result.success();
+    }
+
+    public static class RecordReq {
+        private Integer completeDuration;
+        private String difficulty;
+        private String feeling;
+
+        public Integer getCompleteDuration() { return completeDuration; }
+        public void setCompleteDuration(Integer completeDuration) { this.completeDuration = completeDuration; }
+        public String getDifficulty() { return difficulty; }
+        public void setDifficulty(String difficulty) { this.difficulty = difficulty; }
+        public String getFeeling() { return feeling; }
+        public void setFeeling(String feeling) { this.feeling = feeling; }
     }
 
     @Operation(summary = "Complete a course independent of a plan")

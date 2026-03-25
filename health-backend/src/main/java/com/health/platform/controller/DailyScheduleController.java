@@ -190,16 +190,32 @@ public class DailyScheduleController {
             return Result.error("Schedule not found or unauthorized");
         }
 
-        // Only insert a training record — do NOT touch schedule status
-        TrainingRecord record = new TrainingRecord();
-        record.setUserId(userId);
-        record.setSourceType("SCHEDULE");
-        record.setSourceId(id);
-        record.setCompleteDuration(req.getCompleteDuration() != null ? req.getCompleteDuration() : 1);
-        record.setDifficulty(req.getDifficulty() != null ? req.getDifficulty() : "GOOD");
-        record.setFeeling(req.getFeeling());
-        record.setRecordTime(java.time.LocalDateTime.now());
-        recordMapper.insert(record);
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+        TrainingRecord existed = recordMapper.selectOne(new LambdaQueryWrapper<TrainingRecord>()
+                .eq(TrainingRecord::getUserId, userId)
+                .eq(TrainingRecord::getSourceType, "SCHEDULE")
+                .eq(TrainingRecord::getSourceId, id)
+                .orderByDesc(TrainingRecord::getRecordTime)
+                .last("limit 1"));
+
+        if (existed != null) {
+            existed.setCompleteDuration(req.getCompleteDuration() != null ? req.getCompleteDuration() : existed.getCompleteDuration());
+            existed.setDifficulty(req.getDifficulty() != null ? req.getDifficulty() : existed.getDifficulty());
+            existed.setFeeling(req.getFeeling());
+            existed.setRecordTime(now);
+            recordMapper.updateById(existed);
+        } else {
+            TrainingRecord record = new TrainingRecord();
+            record.setUserId(userId);
+            record.setSourceType("SCHEDULE");
+            record.setSourceId(id);
+            record.setCompleteDuration(req.getCompleteDuration() != null ? req.getCompleteDuration() : 1);
+            record.setDifficulty(req.getDifficulty() != null ? req.getDifficulty() : "GOOD");
+            record.setFeeling(req.getFeeling());
+            record.setRecordTime(now);
+            recordMapper.insert(record);
+        }
 
         return Result.success();
     }
@@ -420,6 +436,14 @@ public class DailyScheduleController {
         Integer userId = StpUtil.getLoginIdAsInt();
         com.health.platform.entity.Course course = courseMapper.selectById(req.getCourseId());
         if (course == null) return Result.error("Course not found");
+
+        // delete pending tasks of this course in future to replace with new ones (simulate batch reschedule)
+        java.time.LocalDate today = java.time.LocalDate.now();
+        scheduleMapper.delete(new LambdaQueryWrapper<DailySchedule>()
+                .eq(DailySchedule::getUserId, userId)
+                .eq(DailySchedule::getCourseId, req.getCourseId())
+                .eq(DailySchedule::getStatus, "PENDING")
+                .ge(DailySchedule::getDate, today));
 
         for (LocalDate date : req.getDates()) {
             DailySchedule schedule = new DailySchedule();

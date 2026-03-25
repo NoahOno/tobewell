@@ -34,6 +34,39 @@ public class TrainingPlanController {
         public void setActivate(Boolean activate) { this.activate = activate; }
     }
 
+    public static class FrequencyReq {
+        private Integer daysPerWeek;
+        public Integer getDaysPerWeek() { return daysPerWeek; }
+        public void setDaysPerWeek(Integer daysPerWeek) { this.daysPerWeek = daysPerWeek; }
+    }
+
+    @Operation(summary = "Adjust plan frequency")
+    @PostMapping("/subscribe/{id}/frequency")
+    public Result<Void> adjustFrequency(@PathVariable Integer id, @RequestBody FrequencyReq req) {
+        Integer userId = StpUtil.getLoginIdAsInt();
+        TrainingPlan plan = trainingMapper.selectById(id);
+        
+        if (plan == null || !userId.equals(plan.getUserId())) {
+            return Result.error("Plan not found or unauthorized");
+        }
+
+        int count = req.getDaysPerWeek() != null ? req.getDaysPerWeek() : 3;
+        // training_plan table currently doesn't have frequency field, skip updating it.
+        // If frequency field is added to db later, uncomment below:
+        // plan.setFrequency("每周" + count + "天");
+        // trainingMapper.updateById(plan);
+
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDate nextMonday = today.with(java.time.temporal.TemporalAdjusters.next(java.time.DayOfWeek.MONDAY));
+        
+        scheduleMapper.delete(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.health.platform.entity.DailySchedule>()
+                .eq(com.health.platform.entity.DailySchedule::getPlanId, id)
+                .eq(com.health.platform.entity.DailySchedule::getStatus, "PENDING")
+                .ge(com.health.platform.entity.DailySchedule::getDate, nextMonday));
+        
+        return Result.success();
+    }
+
     @Autowired
     private TrainingMapper trainingMapper;
 
@@ -67,11 +100,23 @@ public class TrainingPlanController {
     @PostMapping("/save")
     public Result<Void> save(@RequestBody TrainingPlan plan) {
         Integer userId = StpUtil.getLoginIdAsInt();
-        plan.setUserId(userId);
 
         if (plan.getId() == null) {
+            plan.setUserId(userId);
+            if (!StpUtil.hasRole("ADMIN")) {
+                plan.setIsPublic(false);
+            }
             trainingMapper.insert(plan);
         } else {
+            TrainingPlan old = trainingMapper.selectById(plan.getId());
+            if (old == null) return Result.error("Plan not found");
+            if (!userId.equals(old.getUserId()) && !StpUtil.hasRole("ADMIN")) {
+                return Result.error("Permission denied");
+            }
+            plan.setUserId(old.getUserId());
+            if (!StpUtil.hasRole("ADMIN")) {
+                plan.setIsPublic(false);
+            }
             trainingMapper.updateById(plan);
         }
         return Result.success();

@@ -113,64 +113,6 @@
           </div>
         </el-tab-pane>
 
-        <!-- 4. Activities CRUD -->
-        <el-tab-pane label="活动中心 (Activities)" name="activities">
-          <div class="table-card premium-card" v-loading="loading">
-            <el-table :data="activities" style="width: 100%">
-              <el-table-column prop="id" label="ID" width="70" />
-              <el-table-column label="活动信息" min-width="260">
-                <template #default="sc">
-                  <div class="act-cell">
-                    <span class="act-title">{{ sc.row.title }}</span>
-                    <span class="act-meta">{{ sc.row.templateType }} · 模板ID {{ sc.row.templateId }}</span>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column label="时间范围" min-width="220">
-                <template #default="sc">
-                  <div class="act-time">{{ formatDateTime(sc.row.startTime) }} - {{ formatDateTime(sc.row.endTime) }}</div>
-                </template>
-              </el-table-column>
-              <el-table-column label="要求/置顶" width="130">
-                <template #default="sc">
-                  <div class="act-tags">
-                    <el-tag v-if="sc.row.pinned === 1" type="success" size="small" effect="plain">置顶</el-tag>
-                    <el-tag type="info" size="small" effect="plain">{{ sc.row.requiredDays }}天</el-tag>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column label="状态" width="120">
-                <template #default="sc">
-                  <el-tag :type="sc.row.status === 'ONLINE' ? 'info' : 'danger'" size="small">{{ sc.row.status }}</el-tag>
-                </template>
-              </el-table-column>
-              <el-table-column label="管理" width="260" align="right">
-                <template #default="sc">
-                  <el-button size="small" link @click="editActivity(sc.row)">编辑</el-button>
-                  <el-button
-                    size="small"
-                    link
-                    type="warning"
-                    @click="togglePin(sc.row.id, sc.row.pinned)"
-                  >{{ sc.row.pinned === 1 ? '取消置顶' : '置顶' }}</el-button>
-                  <el-button
-                    v-if="sc.row.status === 'ONLINE'"
-                    size="small"
-                    link
-                    type="danger"
-                    @click="offlineActivity(sc.row.id)"
-                  >下线</el-button>
-                  <el-button size="small" link @click="showAnalytics(sc.row.id)">统计</el-button>
-                  <el-popconfirm title="确定删除该活动吗？" @confirm="deleteActivity(sc.row.id)">
-                    <template #reference>
-                      <el-button size="small" type="danger" link>删除</el-button>
-                    </template>
-                  </el-popconfirm>
-                </template>
-              </el-table-column>
-            </el-table>
-          </div>
-        </el-tab-pane>
       </el-tabs>
     </div>
 

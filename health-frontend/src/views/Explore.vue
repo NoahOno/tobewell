@@ -178,7 +178,7 @@
               <p class="card-desc">{{ svc.description }}</p>
               <div class="plan-specs">
                 <div class="spec-item"><el-icon><Aim /></el-icon> {{ svc.presetTitle }}</div>
-                <div class="spec-item"><el-icon><Sparkles /></el-icon> 内置提示词</div>
+                <div class="spec-item"><el-icon><MagicStick /></el-icon> 内置提示词</div>
               </div>
               <div class="card-actions">
                 <el-button size="small" type="primary" plain round>
@@ -376,7 +376,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, Plus, Calendar, Timer, User, RefreshRight, Location, UserFilled, Aim, Sparkles, VideoCamera, Star, StarFilled, InfoFilled } from '@element-plus/icons-vue'
+import { Search, Plus, Calendar, Timer, User, RefreshRight, Location, UserFilled, Aim, MagicStick, VideoCamera, Star, StarFilled, InfoFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import request from '../api/request'
 
@@ -496,9 +496,12 @@ const switchModuleByKey = (key: string) => {
 const syncModuleWithRouteTab = (tab?: string) => {
   if (tab === 'services') {
     activeModuleKey.value = 'services'
-    return
+  } else if (tab === 'courses' || tab === 'plans') {
+    activeModuleKey.value = 'training'
+  } else {
+    // Default to training if no tab is provided
+    activeModuleKey.value = 'training'
   }
-  activeModuleKey.value = 'training'
 }
 
 const openServiceChat = (svc: any) => {
@@ -607,12 +610,15 @@ const filteredPlans = computed(() => {
 })
 
 const fetchCourses = async () => {
+  loading.value = true
   try {
     const res: any = await request.get('/course/library', {
       params: searchQ.value ? { keyword: searchQ.value } : {}
     })
     courses.value = res.data || []
-  } catch (e) {}
+  } catch (e) {} finally {
+    loading.value = false
+  }
 }
 
 const fetchMyCourses = async () => {
@@ -769,17 +775,19 @@ const getCardTheme = (cateStr: string) => {
 }
 
 onMounted(() => {
-  syncModuleWithRouteTab(route.query.tab as string | undefined)
-  fetchPlans()
   fetchMyPlans()
-  fetchCourses()
   fetchMyCourses()
   fetchCollections()
 })
 
-watch(() => route.query.tab, (tab) => {
-  syncModuleWithRouteTab(tab as string | undefined)
-})
+watch(() => route.query.tab, (newTab) => {
+  syncModuleWithRouteTab(newTab as string | undefined)
+  if (newTab === 'plans' || !newTab) {
+    fetchPlans()
+  } else if (newTab === 'courses') {
+    fetchCourses()
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>

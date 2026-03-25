@@ -118,7 +118,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Odometer, MessageBox, TrendCharts, EditPen, Calendar, User, Timer, Aim, Trophy, Lightning, Collection, Star, Bicycle } from '@element-plus/icons-vue'
+import { Odometer, MessageBox, TrendCharts, EditPen, Calendar, User, Timer, Aim, Collection, Star, Bicycle } from '@element-plus/icons-vue'
 import request from '../api/request'
 
 const route = useRoute()
@@ -183,8 +183,8 @@ const activeSidebarItem = computed(() => {
   }
   if (route.path.startsWith('/app/explore')) {
     if (route.query.tab) return `/app/explore?tab=${route.query.tab}`
-    // For nested explore routes (e.g. /app/explore/webai), default to services highlight.
-    return '/app/explore?tab=services'
+    // Default highlight to "训练计划" when landing on /app/explore
+    return '/app/explore?tab=plans'
   }
   return route.path
 })

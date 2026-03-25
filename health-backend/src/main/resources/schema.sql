@@ -247,6 +247,22 @@ CREATE TABLE IF NOT EXISTS course (
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (creator_id) REFERENCES sys_user(id)
 );
+
+-- Resource Submission Table (User submit private plan/course for admin review to become public library)
+CREATE TABLE IF NOT EXISTS resource_submission (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    submitter_id INTEGER NOT NULL,
+    resource_type TEXT NOT NULL, -- 'PLAN' or 'COURSE'
+    resource_id INTEGER NOT NULL,
+    status TEXT DEFAULT 'PENDING', -- PENDING, APPROVED, REJECTED
+    note TEXT,
+    reviewer_id INTEGER,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    review_time DATETIME,
+    UNIQUE(submitter_id, resource_type, resource_id, status),
+    FOREIGN KEY (submitter_id) REFERENCES sys_user(id),
+    FOREIGN KEY (reviewer_id) REFERENCES sys_user(id)
+);
 -- Exercise Library Table
 CREATE TABLE IF NOT EXISTS exercise (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
