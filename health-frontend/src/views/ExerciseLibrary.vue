@@ -91,60 +91,39 @@
         v-for="ex in filteredExercises"
         :key="ex.id"
         class="ex-card premium-card"
+        :class="{ 'is-offline': ex.isPublic === false }"
         @click="openDetail(ex)"
       >
-        <div class="ex-image-placeholder">
-          <!-- Placeholder for exercise video/gif -->
-          <el-icon class="play-icon"><VideoPlay /></el-icon>
-          <div class="difficulty-badge" :class="ex.difficulty">{{ ex.difficulty }}</div>
+        <!-- Card Cover / Visual -->
+        <div class="ex-cover" :class="coverGradient(ex.muscle)">
+          <el-icon class="ex-cover-icon"><VideoPlay /></el-icon>
+          <div class="ex-difficulty-pill" :class="diffClass(ex.difficulty)">{{ ex.difficulty }}</div>
+          <div class="ex-offline-badge" v-if="ex.isPublic === false">🚫 已下架</div>
         </div>
+        <!-- Card Body -->
         <div class="ex-info">
           <h3 class="ex-name">{{ ex.name }}</h3>
-          <div class="ex-tags">
-            <el-tag size="small" type="info">{{ ex.muscle }}</el-tag>
-            <el-tag size="small" type="info">{{ ex.equipment }}</el-tag>
+          <div class="ex-meta">
+            <span class="ex-meta-chip">{{ ex.muscle }}</span>
+            <span class="ex-meta-chip">{{ ex.equipment }}</span>
+            <span class="ex-meta-chip ex-type-chip">{{ ex.type }}</span>
           </div>
+          <p class="ex-desc" v-if="ex.instruction">{{ ex.instruction?.slice(0, 55) }}...</p>
         </div>
         <div v-if="selectMode" class="ex-action">
-          <el-button type="primary" size="small" @click.stop="handleSelect(ex)">选择此动作</el-button>
+          <el-button type="primary" round size="small" @click.stop="handleSelect(ex)">选择此动作</el-button>
         </div>
       </div>
     </div>
 
-    <!-- Detail Dialog -->
-    <el-dialog v-model="detailVisible" :title="currentEx?.name" width="500px" align-center destroy-on-close>
-      <div v-if="currentEx" class="detail-content">
-        <div class="video-box">
-          <el-icon class="huge-icon"><VideoPlay /></el-icon>
-          <p>演示视频</p>
-        </div>
-        <div class="detail-props">
-          <div class="prop-item"><span class="label">目标肌群</span><span class="value">{{ currentEx.muscle }}</span></div>
-          <div class="prop-item"><span class="label">训练类型</span><span class="value">{{ currentEx.type }}</span></div>
-          <div class="prop-item"><span class="label">所需器械</span><span class="value">{{ currentEx.equipment }}</span></div>
-          <div class="prop-item"><span class="label">适用难度</span><span class="value">{{ currentEx.difficulty }}</span></div>
-        </div>
-        
-        <div class="detail-section">
-          <h4>动作说明</h4>
-          <p class="desc-text">{{ currentEx.instruction }}</p>
-        </div>
-        
-        <div class="detail-section">
-          <h4>常见错误</h4>
-          <ul class="error-list">
-            <li v-for="(err, i) in currentEx.commonErrorsList" :key="i">{{ err }}</li>
-          </ul>
-        </div>
-        
-        <div class="detail-section">
-          <h4>推荐组数</h4>
-          <p class="desc-text">{{ currentEx.recommendedSets }}</p>
-        </div>
+    <!-- Detail Dialog — using unified TrainingResourceViewer -->
+    <el-dialog v-model="detailVisible" width="540px" class="resource-detail-dialog" align-center destroy-on-close>
+      <div v-if="currentEx">
+        <TrainingResourceViewer :item="currentEx" type="exercise" />
       </div>
-      <template #footer v-if="selectMode">
-        <el-button @click="detailVisible = false">取消</el-button>
-        <el-button type="primary" @click="handleSelect(currentEx)">替换为此动作</el-button>
+      <template #footer>
+        <el-button @click="detailVisible = false" round>关闭</el-button>
+        <el-button v-if="selectMode" type="primary" round @click="handleSelect(currentEx)">选择此动作</el-button>
       </template>
     </el-dialog>
   </div>
@@ -154,6 +133,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { Search, VideoPlay } from '@element-plus/icons-vue'
 import request from '../api/request'
+import TrainingResourceViewer from '../components/TrainingResourceViewer.vue'
 
 const props = defineProps({
   selectMode: { type: Boolean, default: false }
@@ -221,6 +201,22 @@ const handleSelect = (ex: any) => {
   detailVisible.value = false
 }
 
+const coverGradient = (muscle: string) => {
+  const m = muscle || ''
+  if (m.includes('胸')) return 'grad-chest'
+  if (m.includes('背')) return 'grad-back'
+  if (m.includes('腿') || m.includes('下肢')) return 'grad-legs'
+  if (m.includes('核心')) return 'grad-core'
+  if (m.includes('肩') || m.includes('上肢')) return 'grad-shoulder'
+  return 'grad-default'
+}
+
+const diffClass = (d: string) => {
+  if (d === '高级') return 'diff-hard'
+  if (d === '中级') return 'diff-medium'
+  return 'diff-easy'
+}
+
 onMounted(fetchExercises)
 </script>
 
@@ -277,9 +273,12 @@ onMounted(fetchExercises)
   padding: 0 16px;
 }
 
+/* ═══════════════════════
+   Exercise Grid Cards
+═══════════════════════ */
 .exercise-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 20px;
 }
 
@@ -287,60 +286,102 @@ onMounted(fetchExercises)
   padding: 0;
   overflow: hidden;
   cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
   display: flex;
   flex-direction: column;
+  border-radius: 18px;
+  transition: transform 0.22s cubic-bezier(0.16,1,0.3,1), box-shadow 0.22s;
 }
-
 .ex-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+  transform: translateY(-5px);
+  box-shadow: 0 16px 32px rgba(0,0,0,0.12) !important;
+}
+.ex-card.is-offline {
+  opacity: 0.55;
+  filter: grayscale(0.6);
 }
 
-.ex-image-placeholder {
-  height: 140px;
-  background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
+/* Cover gradient bands */
+.ex-cover {
+  height: 130px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
 }
+.grad-chest    { background: linear-gradient(135deg, #ef4444, #f97316); }
+.grad-back     { background: linear-gradient(135deg, #3b82f6, #06b6d4); }
+.grad-legs     { background: linear-gradient(135deg, #8b5cf6, #ec4899); }
+.grad-core     { background: linear-gradient(135deg, #f59e0b, #10b981); }
+.grad-shoulder { background: linear-gradient(135deg, #6366f1, #3b82f6); }
+.grad-default  { background: linear-gradient(135deg, #1f8a70, #2d6cdf); }
 
-.play-icon {
-  font-size: 48px;
-  color: white;
-  opacity: 0.8;
-}
+.ex-cover-icon { font-size: 44px; color: rgba(255,255,255,0.7); }
 
-.difficulty-badge {
+.ex-difficulty-pill {
   position: absolute;
-  top: 12px;
-  right: 12px;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: 600;
+  top: 10px;
+  right: 10px;
+  padding: 3px 10px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 700;
   color: white;
-  background: #3b82f6;
+  background: rgba(0,0,0,0.28);
+  backdrop-filter: blur(4px);
 }
-.difficulty-badge.高级 { background: #ef4444; }
-.difficulty-badge.初级 { background: #10b981; }
+.diff-hard   { background: rgba(239,68,68,0.7) !important; }
+.diff-medium { background: rgba(249,115,22,0.7) !important; }
+.diff-easy   { background: rgba(16,185,129,0.7) !important; }
+
+.ex-offline-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  padding: 3px 8px;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(0,0,0,0.5);
+  color: white;
+}
 
 .ex-info {
-  padding: 16px;
+  padding: 14px 16px;
   flex: 1;
-}
-
-.ex-name {
-  margin: 0 0 12px;
-  font-size: 16px;
-  font-weight: 700;
-  color: #1e293b;
-}
-
-.ex-tags {
   display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+.ex-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #1e293b;
+  line-height: 1.3;
+}
+.ex-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.ex-meta-chip {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #64748b;
+}
+.ex-type-chip { background: #eff6ff; color: #3b82f6; }
+.ex-desc {
+  margin: 0;
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .ex-action {

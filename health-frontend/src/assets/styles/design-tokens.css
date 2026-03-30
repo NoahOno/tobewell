@@ -1,20 +1,27 @@
 :root {
-  /* Colors - Modern Health Palette */
-  --primary-color: #4ADE80;
-  --primary-light: #F0FDF4;
-  --secondary-color: #3B82F6;
-  --secondary-light: #EFF6FF;
-  --accent-color: #F87171;
-  --accent-light: #FEF2F2;
-  --purple-color: #A78BFA;
-  --purple-light: #F5F3FF;
+  --primary-color: #1f8a70;
+  --primary-light: #e7f5f1;
+  --secondary-color: #2d6cdf;
+  --secondary-light: #eaf1ff;
+  --accent-color: #ef7d4f;
+  --accent-light: #fff1ea;
+  --purple-color: #6e78f7;
+  --purple-light: #eef0ff;
 
-  --bg-main: #F8FAFC;
-  --bg-card: #FFFFFF;
+  --bg-main: #f3f6f8;
+  --bg-card: #ffffff;
+  --bg-soft: rgba(255, 255, 255, 0.84);
+  --surface-1: #ffffff;
+  --surface-2: #f8fafb;
+  --surface-3: #eef2f5;
 
   --text-main: #1E293B;
   --text-muted: #64748B;
   --text-light: #94A3B8;
+
+  --grad-main: linear-gradient(135deg, rgba(31, 138, 112, 0.16), rgba(45, 108, 223, 0.12), rgba(239, 125, 79, 0.11));
+  --grad-primary: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  --grad-accent: linear-gradient(135deg, var(--accent-color), var(--primary-color));
 
   /* Spacing */
   --space-xs: 4px;
@@ -25,31 +32,36 @@
   --space-section: 100px;
 
   /* Borders & Shadows */
-  --radius-card: 28px;
-  --radius-inner: 20px;
-  --radius-input: 14px;
+  --radius-card: 22px;
+  --radius-inner: 16px;
+  --radius-input: 12px;
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1);
-  --shadow-premium: 0 25px 50px -12px rgba(15, 23, 42, 0.08);
+  --shadow-premium: 0 22px 48px -28px rgba(15, 23, 42, 0.35);
+  --shadow-pop: 0 16px 34px -24px rgba(31, 138, 112, 0.55);
 
-  /* Apple Style Typography */
-  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", "Helvetica Neue", sans-serif;
-}
+  --font-family: "Manrope", "Noto Sans SC", "PingFang SC", "Segoe UI", "Helvetica Neue", sans-serif;
 
-/* Global Overrides */
-* {
-  font-family: var(--font-family) !important;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 160ms;
+  --dur-base: 260ms;
+  --dur-slow: 520ms;
 }
 
 body {
   background-color: var(--bg-main) !important;
   color: var(--text-main);
+  font-family: var(--font-family);
   -webkit-font-smoothing: antialiased;
-  letter-spacing: -0.011em;
+  letter-spacing: -0.006em;
+}
+
+.el-button {
+  font-weight: 800;
 }
 
 /* Premium Element Plus Overrides */
 .el-card {
-  border: none !important;
+  border: 1px solid #edf1f4 !important;
   border-radius: var(--radius-card) !important;
   box-shadow: var(--shadow-premium) !important;
   background-color: var(--bg-card) !important;
@@ -80,15 +92,17 @@ body {
 /* Premium Card Class */
 .premium-card {
   background: var(--bg-card);
+  border: 1px solid #ebf0f3;
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-premium) !important;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-base) var(--ease-out);
   padding: var(--space-lg);
 }
 
 .premium-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 25px 30px -5px rgba(15, 23, 42, 0.08) !important;
+  box-shadow: var(--shadow-pop) !important;
+  border-color: #d9e7df;
 }
 
 /* Widget Variants */
@@ -99,6 +113,108 @@ body {
 }
 
 .widget-gradient {
-  background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  background: var(--grad-primary);
   color: white;
 }
+
+.btn-cta.el-button {
+  height: 54px;
+  padding: 0 22px;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out), filter var(--dur-fast) var(--ease-out);
+}
+.btn-cta.el-button:hover {
+  transform: translateY(-2px);
+  filter: saturate(1.06);
+}
+.btn-cta-primary.el-button {
+  box-shadow: 0 14px 24px -16px rgba(31, 138, 112, 0.75);
+}
+.btn-cta-secondary.el-button {
+  box-shadow: 0 14px 24px -16px rgba(45, 108, 223, 0.66);
+}
+
+.reveal {
+  opacity: 0;
+  transform: translateY(18px) scale(0.99);
+  filter: blur(6px);
+  transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out), filter var(--dur-slow) var(--ease-out);
+  will-change: transform, opacity, filter;
+}
+.reveal.is-in {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+.delay-0 { transition-delay: 0ms; }
+.delay-1 { transition-delay: 80ms; }
+.delay-2 { transition-delay: 160ms; }
+.delay-3 { transition-delay: 240ms; }
+.delay-4 { transition-delay: 320ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+  .premium-card:hover,
+  .btn-cta.el-button:hover {
+    transform: none !important;
+  }
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Unified Resource Detail Dialog (global)
+   Used by both User (Explore.vue) and Admin (TrainingAdmin.vue)
+═══════════════════════════════════════════════ */
+.resource-detail-dialog .el-dialog__header {
+  display: none !important;
+}
+.resource-detail-dialog .el-dialog__body {
+  padding: 0 !important;
+  border-radius: var(--radius-inner);
+  overflow: hidden;
+}
+.resource-detail-dialog .el-dialog__footer {
+  padding: 16px 24px !important;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+}
+.resource-detail-dialog .el-dialog {
+  border-radius: var(--radius-card) !important;
+  overflow: hidden;
+  padding: 0;
+}
+
+/* Shared footer layout */
+.resource-dialog-footer {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* Admin-only status bar shown above viewer */
+.admin-preview-status {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: #f1f5f9;
+  border-bottom: 1px solid #e2e8f0;
+}
+.admin-preview-hint {
+  font-size: 12px;
+  color: #94a3b8;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+

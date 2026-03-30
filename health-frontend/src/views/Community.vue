@@ -13,9 +13,9 @@
         >
           <template #prefix><el-icon><Search /></el-icon></template>
         </el-input>
-        <el-button type="primary" round @click="doSearch">搜索</el-button>
+        <el-button class="btn-cta btn-cta-primary" type="primary" round @click="doSearch">搜索</el-button>
       </div>
-      <el-button type="primary" :icon="EditPen" round @click="openPostDialog">发帖</el-button>
+      <el-button class="btn-cta btn-cta-primary" type="primary" :icon="EditPen" round @click="openPostDialog">发帖</el-button>
     </div>
 
     <!-- Cross Layout Body -->
@@ -60,9 +60,11 @@
 
             <div v-else class="activity-card-grid">
               <div
-                v-for="act in activities"
+                v-for="(act, idx) in activities"
                 :key="act.id"
-                class="activity-card"
+                v-reveal
+                class="activity-card delay-0"
+                :class="`delay-${idx % 5}`"
               >
                 <div class="activity-card-main" @click="openActivityDetail(act.id)">
                   <div class="activity-card-title">{{ act.title }}</div>
@@ -105,9 +107,11 @@
           </div>
 
           <div
-            v-for="post in posts"
+            v-for="(post, idx) in posts"
             :key="post.id"
-            class="post-card premium-card"
+            v-reveal
+            class="post-card premium-card delay-0"
+            :class="`delay-${idx % 5}`"
             @click="openPost(post)"
           >
             <div class="post-header">
@@ -732,6 +736,11 @@ onMounted(() => {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  background:
+    radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 55%),
+    radial-gradient(at 100% 0%, rgba(251, 146, 60, 0.1) 0px, transparent 60%),
+    radial-gradient(at 100% 100%, rgba(74, 222, 128, 0.12) 0px, transparent 55%),
+    #F8FAFF;
 }
 
 /* Top Search Bar */
@@ -740,7 +749,11 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 24px;
-  background: white;
+  background:
+    radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 55%),
+    radial-gradient(at 100% 0%, rgba(251, 146, 60, 0.1) 0px, transparent 55%),
+    rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(14px);
   border-bottom: 1px solid #F1F5F9;
   flex-shrink: 0;
   gap: 16px;
@@ -774,6 +787,7 @@ onMounted(() => {
   gap: 0;
   flex: 1;
   overflow: hidden;
+  background: transparent;
 }
 
 /* Left Sidebar */

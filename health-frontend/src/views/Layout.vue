@@ -201,20 +201,24 @@ onMounted(() => {
 <style scoped>
 .layout-container {
   height: 100vh;
-  background-color: var(--bg-main);
+  background:
+    radial-gradient(at 0% 0%, rgba(31, 138, 112, 0.1) 0px, transparent 52%),
+    radial-gradient(at 100% 0%, rgba(45, 108, 223, 0.08) 0px, transparent 56%),
+    radial-gradient(at 100% 100%, rgba(239, 125, 79, 0.08) 0px, transparent 58%),
+    var(--bg-main);
   display: flex;
   flex-direction: column;
 }
 
 .top-header {
-  height: 72px;
-  background-color: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+  height: 76px;
+  background-color: rgba(255, 255, 255, 0.84);
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid rgba(223, 232, 238, 0.95);
   display: flex;
   align-items: center;
-  padding: 0 32px;
-  z-index: 100;
+  padding: 0 28px;
+  z-index: 120;
   position: sticky;
   top: 0;
 }
@@ -222,17 +226,17 @@ onMounted(() => {
 .sub-container {
   flex: 1;
   overflow: hidden;
-  padding: 16px;
-  gap: 16px;
+  padding: 20px;
+  gap: 18px;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-right: 48px;
+  gap: 10px;
+  margin-right: 40px;
   font-weight: 800;
-  font-size: 20px;
+  font-size: 18px;
   background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
   -webkit-background-clip: text;
   background-clip: text;
@@ -246,50 +250,73 @@ onMounted(() => {
 }
 
 .top-menu :deep(.el-menu-item) {
-  font-weight: 600;
-  font-size: 15px;
-  border-bottom: 2px solid transparent !important;
-  transition: all 0.3s ease;
+  font-weight: 700;
+  font-size: 14px;
+  height: 40px !important;
+  line-height: 40px !important;
+  margin: 0 4px;
+  border-radius: 999px;
+  border-bottom: none !important;
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
 }
 
 .top-menu :deep(.el-menu-item.is-active) {
   color: var(--primary-color) !important;
-  border-bottom-color: var(--primary-color) !important;
+  background: var(--primary-light) !important;
+}
+
+.top-menu :deep(.el-menu-item:hover) {
+  color: var(--primary-color) !important;
+  background: rgba(255, 255, 255, 0.7) !important;
 }
 
 .header-right {
-  margin-left: 20px;
+  margin-left: 16px;
 }
 
 .aside {
-  background-color: white;
+  background-color: var(--surface-1);
+  border: 1px solid #e5edf1;
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-premium);
-  padding: 16px;
-  height: calc(100vh - 120px);
-  margin-top: 8px;
+  padding: 14px;
+  height: calc(100vh - 136px);
+  margin-top: 2px;
 }
 
 .sidebar-menu {
   border: none !important;
+  background: transparent;
 }
 
 .sidebar-menu :deep(.el-menu-item) {
   border-radius: 12px;
-  margin-bottom: 4px;
-  height: 48px;
-  line-height: 48px;
-  transition: all 0.2s ease;
+  margin-bottom: 6px;
+  height: 44px;
+  line-height: 44px;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  position: relative;
 }
 
 .sidebar-menu :deep(.el-menu-item.is-active) {
-  background-color: var(--primary-light) !important;
+  background-color: #eef6f3 !important;
   color: var(--primary-color) !important;
-  font-weight: 600;
+  font-weight: 700;
+}
+
+.sidebar-menu :deep(.el-menu-item.is-active)::before {
+  content: '';
+  position: absolute;
+  left: 6px;
+  top: 10px;
+  width: 3px;
+  height: 24px;
+  border-radius: 10px;
+  background: var(--primary-color);
 }
 
 .sidebar-menu :deep(.el-menu-item:hover) {
-  background-color: #f8fafc !important;
+  background-color: #f5f8fa !important;
 }
 
 .user-info {
@@ -297,24 +324,48 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
   cursor: pointer;
-  padding: 6px 12px;
+  padding: 6px 12px 6px 8px;
   border-radius: 100px;
-  transition: background 0.2s;
+  transition: background-color var(--dur-fast) var(--ease-out);
+  border: 1px solid #e9eff3;
+  background: rgba(255, 255, 255, 0.72);
 }
 
 .user-info:hover {
-  background: rgba(0, 0, 0, 0.03);
+  background: #ffffff;
 }
 
 .user-name {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
 }
 
 .main {
-  padding: 0 16px;
+  padding: 0;
   overflow-y: auto;
+  background: var(--surface-1);
+  border: 1px solid #e5edf1;
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-premium);
+}
+
+@media (max-width: 1100px) {
+  .top-header {
+    padding: 0 16px;
+  }
+
+  .logo span {
+    display: none;
+  }
+
+  .sub-container {
+    padding: 14px;
+    gap: 12px;
+  }
+
+  .aside {
+    width: 200px !important;
+  }
 }
 </style>
-

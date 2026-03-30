@@ -62,18 +62,19 @@ public class ExerciseController {
     @SaCheckRole("ADMIN")
     public Result<Void> save(@RequestBody Exercise exercise) {
         if (exercise.getId() == null) {
-            exerciseMapper.insert(exercise);
+            if (exercise.getIsPublic() == null) exercise.setIsPublic(true); exerciseMapper.insert(exercise);
         } else {
             exerciseMapper.updateById(exercise);
         }
         return Result.success();
     }
 
-    @Operation(summary = "Admin: Delete exercise")
+    @Operation(summary = "Admin: Offline exercise")
     @DeleteMapping("/{id}")
     @SaCheckRole("ADMIN")
     public Result<Void> delete(@PathVariable Integer id) {
-        exerciseMapper.deleteById(id);
+        Exercise e = exerciseMapper.selectById(id);
+        if (e != null) { e.setIsPublic(false); exerciseMapper.updateById(e); }
         return Result.success();
     }
 }

@@ -3,7 +3,7 @@
     <el-aside width="260px" class="admin-sidebar" v-if="isAdmin">
       <div class="sidebar-logo">
         <el-icon :size="28" color="var(--primary-color)"><TrendCharts /></el-icon>
-        <span>健康管理后台</span>
+        <span>管理后台</span>
       </div>
       
       <el-menu

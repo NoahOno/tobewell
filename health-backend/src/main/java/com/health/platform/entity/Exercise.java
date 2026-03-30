@@ -21,5 +21,6 @@ public class Exercise {
     private String recommendedSets;
     private String imageUrl;
     private String videoUrl;
+    private Boolean isPublic;
     private LocalDateTime createTime;
 }

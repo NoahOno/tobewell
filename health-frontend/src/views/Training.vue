@@ -2,32 +2,31 @@
   <div class="training-dashboard">
     <!-- Main Content Area -->
     <div class="main-body" v-loading="loading">
-
       <!-- Training Dashboard (Global Overview) -->
       <template v-if="activeMenu === 'overview'">
         <div class="overview-wrap">
           <div class="overview-top-stats">
-            <div class="stat-card">
+            <div v-reveal class="stat-card delay-0">
               <div class="stat-label">累计训练时长</div>
               <div class="stat-value">{{ formatMinutes(overviewSummary.totalDurationMinutes) }}</div>
             </div>
-            <div class="stat-card">
+            <div v-reveal class="stat-card delay-1">
               <div class="stat-label">连续训练天数</div>
               <div class="stat-value">{{ overviewSummary.currentStreakDays }} 天</div>
             </div>
-            <div class="stat-card">
+            <div v-reveal class="stat-card delay-2">
               <div class="stat-label">完成训练次数</div>
               <div class="stat-value">{{ overviewSummary.completedCount }} 次</div>
             </div>
           </div>
 
-          <div class="overview-chart-card">
+          <div v-reveal class="overview-chart-card delay-0">
             <div class="overview-section-title">最近七天运动趋势</div>
             <div ref="trendChartRef" class="trend-chart"></div>
           </div>
 
           <div class="overview-bottom">
-            <div class="recent-card">
+            <div v-reveal class="recent-card delay-1">
               <div class="overview-section-title">最近十条训练数据</div>
               <div class="commit-timeline">
                 <div v-if="recentTrainings.length === 0" class="empty-subtle">暂无训练记录</div>
@@ -44,7 +43,7 @@
               </div>
             </div>
 
-            <div class="today-card">
+            <div v-reveal class="today-card delay-2">
               <div class="overview-section-title">今日训练安排</div>
               <div v-if="todaySchedules.length === 0" class="empty-subtle">今天暂无安排</div>
               <div v-else class="today-list">
@@ -163,17 +162,78 @@
 
       <!-- Active Training Plans Management -->
       <template v-if="activeMenu === 'plans'">
-        <div class="section-header">
-          <h3>训练管控</h3>
-          <el-radio-group v-model="myTrainingTab" size="small">
-            <el-radio-button label="plans">整体计划</el-radio-button>
-            <el-radio-button label="courses">单次课程</el-radio-button>
-          </el-radio-group>
+        <div class="train-header">
+          <div class="train-header-left">
+            <div class="train-title-row">
+              <h2>训练管控</h2>
+              <el-radio-group v-model="myTrainingTab" size="small">
+                <el-radio-button label="plans">训练计划</el-radio-button>
+                <el-radio-button label="courses">单次课程</el-radio-button>
+              </el-radio-group>
+            </div>
+            <p>搜索与筛选你正在推进的训练内容，快速找到今天要练的那一个。</p>
+          </div>
+          <div class="train-header-right">
+            <el-input
+              v-model="trainQuery.keyword"
+              placeholder="搜索标题或描述..."
+              class="search-input"
+              clearable
+              @keyup.enter="noopSearch"
+              @clear="noopSearch"
+            >
+              <template #prefix><el-icon><Search /></el-icon></template>
+            </el-input>
+            <el-button type="primary" @click="noopSearch">搜索</el-button>
+          </div>
+        </div>
+
+        <div class="filters-card premium-card">
+          <template v-if="myTrainingTab === 'plans'">
+            <div class="filter-row">
+              <span class="filter-label">目标</span>
+              <div class="filter-options">
+                <el-tag v-for="g in planGoals" :key="g" :effect="trainQuery.planGoal === g ? 'dark' : 'plain'" class="filter-tag" @click="trainQuery.planGoal = g">{{ g }}</el-tag>
+              </div>
+            </div>
+            <div class="filter-row">
+              <span class="filter-label">难度</span>
+              <div class="filter-options">
+                <el-tag v-for="d in planDifficulties" :key="d" :effect="trainQuery.planDifficulty === d ? 'dark' : 'plain'" class="filter-tag" @click="trainQuery.planDifficulty = d">{{ d }}</el-tag>
+              </div>
+            </div>
+            <div class="filter-row">
+              <span class="filter-label">频次</span>
+              <div class="filter-options">
+                <el-tag v-for="f in planFrequencies" :key="f" :effect="trainQuery.planFrequency === f ? 'dark' : 'plain'" class="filter-tag" @click="trainQuery.planFrequency = f">{{ f }}</el-tag>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <div class="filter-row">
+              <span class="filter-label">分类</span>
+              <div class="filter-options">
+                <el-tag v-for="c in courseCategories" :key="c" :effect="trainQuery.courseCategory === c ? 'dark' : 'plain'" class="filter-tag" @click="trainQuery.courseCategory = c">{{ c }}</el-tag>
+              </div>
+            </div>
+            <div class="filter-row">
+              <span class="filter-label">难度</span>
+              <div class="filter-options">
+                <el-tag v-for="d in courseDifficulties" :key="d" :effect="trainQuery.courseDifficulty === d ? 'dark' : 'plain'" class="filter-tag" @click="trainQuery.courseDifficulty = d">{{ d }}</el-tag>
+              </div>
+            </div>
+            <div class="filter-row">
+              <span class="filter-label">时长</span>
+              <div class="filter-options">
+                <el-tag v-for="t in courseDurations" :key="t" :effect="trainQuery.courseDuration === t ? 'dark' : 'plain'" class="filter-tag" @click="trainQuery.courseDuration = t">{{ t }}</el-tag>
+              </div>
+            </div>
+          </template>
         </div>
 
         <template v-if="myTrainingTab === 'plans'">
           <div class="card-grid">
-            <div v-for="plan in activePlans" :key="plan.id" class="module-card premium-card">
+            <div v-for="(plan, idx) in filteredActivePlans" :key="plan.id" v-reveal class="module-card premium-card delay-0" :class="`delay-${idx % 5}`">
                <div class="card-header-tags"><el-tag size="small" type="success" effect="dark" style="border:none">推进中</el-tag></div>
                <h3 class="card-title">{{ plan.title }}</h3>
                <p class="card-desc">{{ (plan.description || '').slice(0, 80) }}...</p>
@@ -187,13 +247,13 @@
                  <el-button size="small" type="danger" plain round @click="handleCancelPlan(plan.id)">退出计划</el-button>
                </div>
             </div>
-            <el-empty v-if="activePlans.length === 0" description="暂无正在进行中的训练计划" />
+            <el-empty v-if="filteredActivePlans.length === 0" description="暂无匹配的训练计划" />
           </div>
         </template>
 
         <template v-else-if="myTrainingTab === 'courses'">
           <div class="card-grid">
-            <div v-for="course in managedCourses" :key="course.id" class="module-card premium-card">
+            <div v-for="(course, idx) in filteredManagedCourses" :key="course.id" v-reveal class="module-card premium-card delay-0" :class="`delay-${idx % 5}`">
                <div class="card-header-tags"><el-tag size="small" type="primary" effect="dark" style="border:none">单次课</el-tag></div>
                <h3 class="card-title">{{ course.title }}</h3>
                <p class="card-desc">{{ (course.description || '').slice(0, 80) }}...</p>
@@ -208,7 +268,7 @@
                  <el-button size="small" type="danger" text @click="handleRemoveCourse(course.id)">移除</el-button>
                </div>
             </div>
-            <el-empty v-if="managedCourses.length === 0" description="暂无已安排的单次课程" />
+            <el-empty v-if="filteredManagedCourses.length === 0" description="暂无匹配的单次课程" />
           </div>
         </template>
       </template>
@@ -642,7 +702,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch, nextTick, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Calendar, Star, Edit, Plus, Check, Lock, Timer, Aim, RefreshRight, InfoFilled } from '@element-plus/icons-vue'
+import { Calendar, Star, Edit, Plus, Check, Lock, Timer, Aim, RefreshRight, InfoFilled, Search } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as echarts from 'echarts'
 import request from '../api/request'
@@ -654,6 +714,24 @@ const loading = ref(false)
 const myTrainingTab = ref('plans') // internal switcher for My Training
 const scheduleDetailVisible = ref(false)
 const activeSchedule = ref<any>(null)
+
+const trainQuery = reactive({
+  keyword: '',
+  planGoal: '全部',
+  planDifficulty: '全部',
+  planFrequency: '全部',
+  courseCategory: '全部',
+  courseDifficulty: '全部',
+  courseDuration: '全部'
+})
+
+const planGoals = ['全部', '减脂', '增肌', '体能', '康复']
+const planDifficulties = ['全部', '初级', '中级', '高级']
+const planFrequencies = ['全部', '每周2-3天', '每周4-5天', '每周6+天']
+const courseDifficulties = ['全部', '初级', '中级', '高级']
+const courseDurations = ['全部', '≤15分钟', '15-30分钟', '30-45分钟', '≥45分钟']
+
+const noopSearch = () => {}
 
 const openScheduleDetail = (sched: any) => {
   activeSchedule.value = sched
@@ -860,6 +938,14 @@ const managedCourses = computed(() => {
   return myCourses.value.filter(c => (courseSchedulesByCourseId.value[c.id]?.length || 0) > 0)
 })
 
+const courseCategories = computed(() => {
+  const set = new Set<string>()
+  for (const c of managedCourses.value) {
+    if (c?.category) set.add(String(c.category))
+  }
+  return ['全部', ...Array.from(set)]
+})
+
 const activeCourseSchedules = computed(() => {
   if (!activeCourse.value?.id) return []
   return courseSchedulesByCourseId.value[activeCourse.value.id] || []
@@ -985,6 +1071,41 @@ const userCreatedPlans = computed(() => {
 
 const activePlans = computed(() => {
   return allMyPlans.value.filter(p => p.isSubscribed !== false && (p.status === 'ACTIVE' || p.status === 'PLANNING'))
+})
+
+const filteredActivePlans = computed(() => {
+  const keyword = trainQuery.keyword.trim().toLowerCase()
+  return activePlans.value.filter((p: any) => {
+    const title = String(p?.title || '').toLowerCase()
+    const desc = String(p?.description || '').toLowerCase()
+    if (keyword && !title.includes(keyword) && !desc.includes(keyword)) return false
+    if (trainQuery.planGoal !== '全部' && String(p?.goal || '') !== trainQuery.planGoal) return false
+    if (trainQuery.planDifficulty !== '全部' && String(p?.difficulty || '') !== trainQuery.planDifficulty) return false
+    if (trainQuery.planFrequency !== '全部') {
+      const freq = String(p?.frequency || '')
+      if (!freq.includes(trainQuery.planFrequency)) return false
+    }
+    return true
+  })
+})
+
+const filteredManagedCourses = computed(() => {
+  const keyword = trainQuery.keyword.trim().toLowerCase()
+  return managedCourses.value.filter((c: any) => {
+    const title = String(c?.title || '').toLowerCase()
+    const desc = String(c?.description || '').toLowerCase()
+    if (keyword && !title.includes(keyword) && !desc.includes(keyword)) return false
+    if (trainQuery.courseCategory !== '全部' && String(c?.category || '') !== trainQuery.courseCategory) return false
+    if (trainQuery.courseDifficulty !== '全部' && String(c?.difficulty || '') !== trainQuery.courseDifficulty) return false
+    if (trainQuery.courseDuration !== '全部') {
+      const mins = Number(c?.durationMinutes || 0)
+      if (trainQuery.courseDuration === '≤15分钟' && !(mins <= 15)) return false
+      if (trainQuery.courseDuration === '15-30分钟' && !(mins > 15 && mins <= 30)) return false
+      if (trainQuery.courseDuration === '30-45分钟' && !(mins > 30 && mins <= 45)) return false
+      if (trainQuery.courseDuration === '≥45分钟' && !(mins >= 45)) return false
+    }
+    return true
+  })
 })
 
 // Data Fetching
@@ -1616,13 +1737,81 @@ onMounted(async () => {
 .training-dashboard {
   display: flex;
   height: 100%;
-  background: #F8FAFC;
+  background:
+    radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 55%),
+    radial-gradient(at 100% 0%, rgba(251, 146, 60, 0.1) 0px, transparent 60%),
+    radial-gradient(at 100% 100%, rgba(74, 222, 128, 0.12) 0px, transparent 55%),
+    #F8FAFF;
 }
 
 .main-body {
   flex: 1;
   padding: 32px;
   overflow-y: auto;
+}
+
+.train-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.train-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.train-header-left h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 1000;
+  color: #0F172A;
+}
+.train-header-left p {
+  margin: 8px 0 0;
+  color: #64748B;
+  font-size: 14px;
+}
+.train-header-right {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+.search-input {
+  width: 360px;
+  max-width: 44vw;
+}
+.filters-card {
+  padding: 16px 24px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.filter-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+.filter-label {
+  font-weight: 800;
+  color: #334155;
+  width: 56px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.filter-tag {
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 800;
 }
 
 .section-header {

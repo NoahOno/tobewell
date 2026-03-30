@@ -35,8 +35,10 @@
               </el-table-column>
               <el-table-column label="管理" width="160" align="right">
                 <template #default="sc">
-                  <el-button type="primary" size="small" link @click="previewContent(sc.row)">预览正文</el-button>
-                  <el-popconfirm title="确定下架并删除该帖子吗？" @confirm="handleDeletePost(sc.row.id)">
+                  <el-button type="primary" size="small" link @click="previewContent(sc.row)">
+                    <el-icon><View /></el-icon> 预览体验
+                  </el-button>
+                  <el-popconfirm title="确定删除该社区内容吗？" @confirm="handleDeletePost(sc.row.id)">
                     <template #reference>
                       <el-button type="danger" size="small" link>删除</el-button>
                     </template>
@@ -104,12 +106,15 @@
               </el-table-column>
               <el-table-column label="操作" width="220" align="right">
                 <template #default="sc">
-                  <el-button v-if="sc.row.status === 'PENDING'" type="success" size="small" link @click="approveSubmission(sc.row.id)">通过</el-button>
-                  <el-popconfirm v-if="sc.row.status === 'PENDING'" title="确定驳回该入库申请吗？" @confirm="rejectSubmission(sc.row.id)">
-                    <template #reference>
-                      <el-button type="danger" size="small" link>驳回</el-button>
-                    </template>
-                  </el-popconfirm>
+                  <el-button type="info" size="small" link @click="previewResource(sc.row)">
+                     <el-icon><View /></el-icon> 完整预览审核
+                  </el-button>
+                  <el-button v-if="sc.row.status === 'PENDING'" type="success" size="small" link @click="approveSubmission(sc.row.id)">
+                     <el-icon><Check /></el-icon> 通过
+                  </el-button>
+                  <el-button v-if="sc.row.status === 'PENDING'" type="danger" size="small" link @click="rejectSubmission(sc.row.id)">
+                     <el-icon><Close /></el-icon> 驳回
+                  </el-button>
                 </template>
               </el-table-column>
             </el-table>
@@ -172,15 +177,72 @@
       </el-tabs>
     </div>
 
-    <!-- Preview Dialog -->
-    <el-dialog v-model="previewVisible" :title="'标题预览: ' + currentPost?.title" width="650px" class="premium-dialog">
-      <div v-if="currentPost" class="post-preview-content">
-         <p class="preview-text">{{ currentPost.content }}</p>
+    
+    <!-- Resource Submission Full Preview Drawer -->
+    <el-drawer v-model="resourcePreviewVisible" title="入库资源全览体验" size="600px" destroy-on-close>
+       <div v-if="loadingResource" v-loading="loadingResource" style="height:200px"></div>
+       <div v-else-if="currentResource" class="resource-preview-container">
+          <div class="rp-header">
+             <div class="rp-tag"><el-tag :type="currentSubmission.resourceType === 'PLAN' ? 'primary' : 'success'">{{ currentSubmission.resourceType }}</el-tag></div>
+             <div class="rp-title">{{ currentResource.title || currentResource.name }}</div>
+          </div>
+          <div class="rp-desc">{{ currentResource.description || currentResource.category || '暂无详细描述' }}</div>
+          
+          <div class="rp-section-title">内容排期 / 动作详情</div>
+          
+          <!-- Shared Preview Logic Similar to Explore.vue -->
+          <div v-if="currentSubmission.resourceType === 'PLAN'" class="rp-struct">
+              <div v-for="(act, idx) in parsedResourceActions" :key="idx" class="rp-day-card">
+                 <div class="rp-day-lbl">Day {{ act.day || idx + 1 }} - {{ act.type }}</div>
+                 <div class="rp-day-title">{{ act.title }}</div>
+                 <div class="rp-acts">
+                    <span class="rp-act-badge" v-for="(a, aidx) in act.actions" :key="aidx">{{ a.name }} [{{ a.sets }}]</span>
+                 </div>
+              </div>
+          </div>
+          <div v-else class="rp-struct">
+              <el-timeline>
+                 <el-timeline-item v-for="(act, idx) in parsedResourceActions" :key="idx" type="primary">
+                    <div class="rp-timeline-card">
+                       <span class="rtc-name">{{ act.name }}</span>
+                       <span class="rtc-sets">推荐: {{ act.sets }} / 休息: {{ act.rest }}</span>
+                    </div>
+                 </el-timeline-item>
+              </el-timeline>
+          </div>
+          
+          <el-divider>管理员审核决断</el-divider>
+          <div class="cd-actions" style="display:flex; gap:16px;">
+             <el-button style="flex:1" type="danger" round plain @click="rejectSubmission(currentSubmission.id); resourcePreviewVisible=false">判定违规/驳回</el-button>
+             <el-button style="flex:1" type="success" round @click="approveSubmission(currentSubmission.id); resourcePreviewVisible=false">核准入库 (全局可见)</el-button>
+          </div>
+       </div>
+       <div v-else>
+          <el-empty description="无法拉取到该私有资源，用户可能已彻底修改或损毁" />
+       </div>
+    </el-drawer>
+
+<!-- Preview Dialog -->
+        <el-drawer v-model="previewVisible" title="社区内容全览" size="500px" class="community-drawer" destroy-on-close>
+      <div v-if="currentPost" class="cd-container">
+        <div class="cd-header">
+           <div class="cd-title">{{ currentPost.title }}</div>
+           <div class="cd-meta">发布者UID: {{ currentPost.userId }} · 板块分类: <el-tag size="small">{{ currentPost.category || '综合交流' }}</el-tag></div>
+        </div>
+        <div class="cd-body">
+           <p class="cd-text">{{ currentPost.content }}</p>
+        </div>
+        <div class="cd-metrics">
+           <div class="metric-badge"><el-icon><ThumbsUp /></el-icon> 获赞 {{ currentPost.likeCount || 0 }}</div>
+           <div class="metric-badge"><el-icon><Calendar /></el-icon> {{ new Date(currentPost.createTime).toLocaleString() }}</div>
+        </div>
+        
+        <el-divider border-style="dashed">治理操作</el-divider>
+        <div class="cd-actions">
+           <el-button type="danger" round style="width:100%" @click="handleDeletePost(currentPost.id); previewVisible=false">违规一键清理 (彻底移除帖子)</el-button>
+        </div>
       </div>
-      <template #footer>
-        <el-button @click="previewVisible = false" round>关闭预览</el-button>
-      </template>
-    </el-dialog>
+    </el-drawer>
 
     <el-dialog v-model="activityDialogVisible" :title="activityForm.id ? '编辑活动' : '新增活动'" width="720px" class="premium-dialog">
       <el-form :model="activityForm" label-position="top">
@@ -334,9 +396,11 @@ const approveSubmission = async (id: number) => {
 }
 
 const rejectSubmission = async (id: number) => {
-  await request.post(`/resource/admin/submissions/${id}/reject`, { note: '' })
-  ElMessage.success('已驳回')
-  fetchSubmissions()
+  try {
+    await request.post(`/resource/admin/submissions/${id}/reject`, { note: '管理驳回' })
+    ElMessage.success('已驳回处理完成')
+    fetchSubmissions()
+  } catch(e){}
 }
 
 const formatDateTime = (val: any) => {
@@ -561,4 +625,29 @@ onMounted(fetchPosts)
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* Community Posts Stylings */
+.cd-container { padding: 8px; }
+.cd-header { margin-bottom: 24px; }
+.cd-title { font-size: 22px; font-weight:800; color: #1e293b; margin-bottom: 8px;}
+.cd-meta { font-size: 13px; color: #64748b; }
+.cd-body { background: #f8fafc; padding: 20px; border-radius: 12px; font-size: 15px; color: #334155; line-height: 1.8; margin-bottom: 24px;}
+.cd-metrics { display:flex; gap: 16px; margin-bottom: 24px; }
+.metric-badge { display:flex; align-items:center; gap:6px; background: #eff6ff; color: #3b82f6; padding: 6px 16px; border-radius:100px; font-size:13px; font-weight:600;}
+
+/* Resource Preview Stylings */
+.resource-preview-container { display: flex; flex-direction: column; gap: 16px; padding:0 8px; }
+.rp-header { display:flex; gap:12px; align-items:center;}
+.rp-title { font-size: 24px; font-weight: 800; color: #0f172a;}
+.rp-desc { font-size: 14px; color: #64748b; line-height:1.6; background: #f8fafc; padding:12px; border-radius:8px;}
+.rp-section-title { font-weight: 700; color:#1e293b; border-left: 4px solid #3b82f6; padding-left: 8px; margin-top:20px; margin-bottom: 12px;}
+.rp-day-card { background: white; border: 1px solid #e2e8f0; padding:16px; border-radius: 8px; margin-bottom: 12px;}
+.rp-day-lbl { font-size: 13px; font-weight: 700; color: #3b82f6;}
+.rp-day-title { font-size: 15px; color: #1e293b; margin: 4px 0 12px;}
+.rp-acts { display:flex; flex-wrap:wrap; gap:8px;}
+.rp-act-badge { font-size: 12px; background: #f1f5f9; padding: 4px 10px; border-radius:4px; color: #475569;}
+.rp-timeline-card { background: #f8fafc; padding: 12px; border-radius:8px; display:flex; flex-direction:column; gap:6px;}
+.rtc-name { font-weight:600; color: #1e293b;}
+.rtc-sets { font-size:13px; color: #64748b;}
+
 </style>

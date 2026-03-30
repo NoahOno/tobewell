@@ -26,10 +26,9 @@
         </el-table-column>
         <el-table-column prop="role" label="权限角色" width="160">
           <template #default="scope">
-            <el-select v-model="scope.row.role" size="small" class="role-select" @change="handleUpdateUser(scope.row)">
-              <el-option label="普通用户" value="USER" />
-              <el-option label="管理员" value="ADMIN" />
-            </el-select>
+            <el-tag :type="scope.row.role === 'ADMIN' ? 'danger' : 'info'" size="small" effect="plain">
+              {{ scope.row.role === 'ADMIN' ? '管理员' : '普通用户' }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="账户状态" width="160">

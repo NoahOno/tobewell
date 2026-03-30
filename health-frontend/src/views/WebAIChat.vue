@@ -5,28 +5,20 @@
         <el-button link type="primary" @click="goBack">返回</el-button>
         <div class="webai-title">AI 健康助手</div>
       </div>
-
-      <div class="webai-header-right">
-        <el-select v-model="selectedPresetKey" size="small" style="width: 240px" @change="onPresetChange">
-          <el-option
-            v-for="p in servicePresets"
-            :key="p.key"
-            :label="p.title"
-            :value="p.key"
-          />
-        </el-select>
-        <el-tag v-if="selectedStyleLabel" type="info" size="small" effect="plain" style="margin-left: 8px">
-          {{ selectedStyleLabel }}
-        </el-tag>
-      </div>
     </div>
 
     <div class="webai-body">
       <div class="webai-messages">
         <el-scrollbar height="100%">
           <div class="msg-list">
-            <div v-if="messages.length === 0" class="empty-chat">
-              选择一种服务风格后，告诉 AI 你遇到的问题。
+            <div v-if="introVisible" class="msg-row">
+              <div class="msg-bubble">
+                <div class="msg-meta">
+                  <span class="msg-role">助手</span>
+                  <span class="msg-time">{{ formatTime() }}</span>
+                </div>
+                <div class="msg-content" style="white-space: pre-wrap">{{ introText }}</div>
+              </div>
             </div>
 
             <div
@@ -48,21 +40,20 @@
       </div>
 
       <div class="webai-input">
-        <el-input
-          v-model="inputText"
-          type="textarea"
-          placeholder="输入你的健康问题...（例如：我膝盖疼，适合做什么训练？）"
-          :rows="3"
-          resize="none"
-          @keyup.enter="onEnter"
-        />
-        <div class="webai-input-actions">
-          <div class="hint">
-            预设提示词会随风格变化（后台接入 AI 后即可直接使用）。
+        <div class="input-shell">
+          <el-input
+            v-model="inputText"
+            type="textarea"
+            placeholder="输入你的问题..."
+            :rows="3"
+            resize="none"
+            @keyup.enter="onEnter"
+          />
+          <div class="webai-input-actions">
+            <el-button type="primary" :loading="sending" :disabled="!inputText.trim()" @click="send">
+              发送
+            </el-button>
           </div>
-          <el-button type="primary" :loading="sending" :disabled="!inputText.trim()" @click="send">
-            发送
-          </el-button>
         </div>
       </div>
     </div>
@@ -143,22 +134,15 @@ const goBack = () => {
   router.push('/app/explore?tab=services')
 }
 
-const onPresetChange = () => {
-  if (!selectedStyleLabel.value) selectedStyleLabel.value = selectedPreset.value.defaultStyleLabel
-}
-
-const ensureWelcome = () => {
-  if (messages.value.length > 0) return
+const introVisible = computed(() => messages.value.every(m => m.role !== 'user'))
+const introText = computed(() => {
   const label = selectedStyleLabel.value || selectedPreset.value.defaultStyleLabel
-  messages.value.push({
-    id: Date.now(),
-    role: 'assistant',
-    content:
-      `欢迎来到「${selectedPreset.value.title}」。当前风格：${label}。\n` +
-      `你可以直接描述你的情况和目标（例如：疼痛部位/训练频率/饮食习惯），我会给你可执行的建议。`,
-    time: formatTime()
-  })
-}
+  return (
+    `欢迎来到「${selectedPreset.value.title}」。当前风格：${label}。\n` +
+    `把你的情况说清楚就行：目标、频率、限制（伤痛/时间/器械/饮食偏好等）。\n` +
+    `我会给你可执行的下一步。`
+  )
+})
 
 const simulateAssistant = (presetKey: string, userText: string) => {
   const header = selectedPreset.value.fallbackHeader
@@ -201,7 +185,6 @@ const send = async () => {
   const text = inputText.value.trim()
   if (!text) return
 
-  ensureWelcome()
   inputText.value = ''
 
   const userMsg: ChatMsg = { id: Date.now(), role: 'user', content: text, time: formatTime() }
@@ -254,7 +237,6 @@ const onEnter = (e: KeyboardEvent) => {
 
 onMounted(() => {
   if (!selectedStyleLabel.value) selectedStyleLabel.value = selectedPreset.value.defaultStyleLabel
-  ensureWelcome()
 })
 </script>
 
@@ -291,13 +273,18 @@ onMounted(() => {
   display: flex;
   flex: 1;
   overflow: hidden;
-  background: #F8FAFC;
+  background:
+    radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.12) 0px, transparent 55%),
+    radial-gradient(at 100% 0%, rgba(251, 146, 60, 0.1) 0px, transparent 60%),
+    radial-gradient(at 100% 100%, rgba(74, 222, 128, 0.12) 0px, transparent 55%),
+    #F8FAFF;
+  flex-direction: column;
 }
 
 .webai-messages {
   flex: 1;
   overflow: hidden;
-  padding: 18px 20px;
+  padding: 22px 20px;
 }
 
 .msg-list {
@@ -351,35 +338,38 @@ onMounted(() => {
   font-size: 14px;
 }
 
-.empty-chat {
-  color: #94A3B8;
-  text-align: center;
-  margin-top: 60px;
-  font-size: 14px;
+.webai-input {
+  padding: 16px 20px 22px;
+  display: flex;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(226, 232, 240, 0.7);
 }
 
-.webai-input {
-  width: 520px;
+.input-shell {
+  width: min(860px, 100%);
   background: white;
-  border-left: 1px solid #F1F5F9;
-  padding: 16px;
+  border: 1px solid rgba(226, 232, 240, 0.7);
+  border-radius: 18px;
+  padding: 12px 12px;
+  box-shadow: 0 18px 42px -28px rgba(15, 23, 42, 0.28);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
+}
+
+.input-shell :deep(.el-textarea__inner) {
+  border: none !important;
+  box-shadow: none !important;
+  padding: 10px 12px !important;
 }
 
 .webai-input-actions {
   display: flex;
   gap: 12px;
   align-items: center;
-  justify-content: space-between;
-}
-
-.hint {
-  font-size: 12px;
-  color: #94A3B8;
-  line-height: 1.4;
-  max-width: 260px;
+  justify-content: flex-end;
 }
 </style>
 

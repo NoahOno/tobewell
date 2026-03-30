@@ -76,14 +76,13 @@ public class AdminController {
     @Operation(summary = "Get all library plans")
     @GetMapping("/plans")
     public Result<List<TrainingPlan>> getLibraryPlans() {
-        return Result.success(trainingMapper.selectList(new LambdaQueryWrapper<TrainingPlan>()
-                .eq(TrainingPlan::getIsPublic, true)));
+        return Result.success(trainingMapper.selectList(new LambdaQueryWrapper<TrainingPlan>().orderByDesc(TrainingPlan::getId)));
     }
 
     @Operation(summary = "Create or Update a library plan")
     @PostMapping("/plan/save")
     public Result<Void> saveLibraryPlan(@RequestBody TrainingPlan plan) {
-        plan.setIsPublic(true); // Always public when managed here
+        if (plan.getIsPublic() == null) plan.setIsPublic(true);
         if (plan.getId() == null) {
             trainingMapper.insert(plan);
         } else {
@@ -92,24 +91,24 @@ public class AdminController {
         return Result.success();
     }
 
-    @Operation(summary = "Delete library plan")
+    @Operation(summary = "Offline library plan")
     @DeleteMapping("/plan/{id}")
     public Result<Void> deleteLibraryPlan(@PathVariable Integer id) {
-        trainingMapper.deleteById(id);
+        TrainingPlan p = trainingMapper.selectById(id);
+        if (p != null) { p.setIsPublic(false); trainingMapper.updateById(p); }
         return Result.success();
     }
 
     @Operation(summary = "Get all library courses")
     @GetMapping("/courses")
     public Result<List<Course>> getLibraryCourses() {
-        return Result.success(courseMapper.selectList(new LambdaQueryWrapper<Course>()
-                .eq(Course::getIsPublic, true)));
+        return Result.success(courseMapper.selectList(new LambdaQueryWrapper<Course>().orderByDesc(Course::getId)));
     }
 
     @Operation(summary = "Create or Update a library course")
     @PostMapping("/course/save")
     public Result<Void> saveLibraryCourse(@RequestBody Course course) {
-        course.setIsPublic(true); // Always public when managed here
+        if (course.getIsPublic() == null) course.setIsPublic(true);
         if (course.getId() == null) {
             courseMapper.insert(course);
         } else {
@@ -118,10 +117,11 @@ public class AdminController {
         return Result.success();
     }
 
-    @Operation(summary = "Delete library course")
+    @Operation(summary = "Offline library course")
     @DeleteMapping("/course/{id}")
     public Result<Void> deleteLibraryCourse(@PathVariable Integer id) {
-        courseMapper.deleteById(id);
+        Course c = courseMapper.selectById(id);
+        if (c != null) { c.setIsPublic(false); courseMapper.updateById(c); }
         return Result.success();
     }
 
