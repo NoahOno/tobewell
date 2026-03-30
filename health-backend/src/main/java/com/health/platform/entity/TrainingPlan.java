@@ -24,4 +24,6 @@ public class TrainingPlan {
     private Boolean isPublic;
     private Integer sourceId;
     private Boolean isSubscribed;
+    private String coverImage;
+    private String audience;
 }

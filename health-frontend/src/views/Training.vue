@@ -386,7 +386,7 @@
         <div class="sd-actions-title">动作列表</div>
         <div class="actions-list">
           <div v-for="(act, idx) in parseActions(activeSchedule.actions)" :key="idx" class="al-item">
-            <span class="al-name">{{ idx + 1 }}. {{ act.name }}</span>
+            <span class="al-name">{{ Number(idx) + 1 }}. {{ act.name }}</span>
             <span class="al-sets">{{ act.sets }}</span>
           </div>
           <div v-if="parseActions(activeSchedule.actions).length === 0" class="empty-subtle">
@@ -603,17 +603,19 @@
           </el-col>
         </el-row>
 
-        <div class="sd-actions-title">动作编排</div>
+        <div class="sd-actions-title">课程编排</div>
         <div class="card-actions mt-2">
-          <el-button type="primary" plain round @click="openExerciseSelector('plan')">从动作库添加</el-button>
+           <el-button type="primary" plain round @click="addPlanDayRow">新增训练日</el-button>
         </div>
         <div class="actions-list" style="margin-top: 12px;">
-          <div v-for="(a, idx) in planForm.actions" :key="idx" class="al-item">
-            <span class="al-name">{{ a.name }}</span>
-            <el-input v-model="a.sets" size="small" style="width: 160px" placeholder="例如 3x12" />
+          <div v-for="(day, idx) in planForm.actions" :key="idx" class="al-item-day">
+            <div class="day-num-tab">Day {{ idx + 1 }}</div>
+            <el-select v-model="day.courseId" placeholder="选择课程" @change="(val: number) => handlePlanCourseChange(val, day)" style="flex: 1; margin: 0 12px;">
+              <el-option v-for="c in myCourses" :key="c.id" :label="c.title" :value="c.id" />
+            </el-select>
             <el-button size="small" type="danger" text @click="planForm.actions.splice(idx, 1)">移除</el-button>
           </div>
-          <div v-if="planForm.actions.length === 0" class="empty-subtle">未添加动作</div>
+          <div v-if="planForm.actions.length === 0" class="empty-subtle">点击上方按钮开始编排</div>
         </div>
       </el-form>
       <template #footer>
@@ -817,6 +819,17 @@ const fetchExercises = async () => {
   }
 }
 
+const addPlanDayRow = () => {
+  planForm.actions.push({ type: '训练', courseId: null, courseTitle: '' })
+}
+
+const handlePlanCourseChange = (courseId: number, day: any) => {
+  const c = myCourses.value.find(x => x.id === courseId)
+  if (c) {
+    day.courseTitle = c.title
+  }
+}
+
 const addExerciseToForm = (ex: any) => {
   const item = {
     name: ex.name,
@@ -831,7 +844,7 @@ const addExerciseToForm = (ex: any) => {
 
 const openCreatePlan = () => {
   editingPlanId.value = null
-  Object.assign(planForm, { title: '', description: '', category: '', duration: '', actions: [] })
+  Object.assign(planForm, { title: '', description: '', category: '', duration: '', actions: [{ type: '训练', courseId: null, courseTitle: '' }] })
   planEditorVisible.value = true
 }
 
@@ -849,7 +862,12 @@ const editMyPlan = (plan: any) => {
     category: plan.category || '',
     duration: plan.duration || '',
     actions: (() => {
-      try { return JSON.parse(plan.actions || '[]') } catch { return [] }
+      try { 
+        const parsed = JSON.parse(plan.actions || '[]')
+        // Migration: if old format (list of exercises), reset to empty or wrap
+        if (parsed.length > 0 && !parsed[0].courseId && parsed[0].name) return []
+        return parsed 
+      } catch { return [] }
     })()
   })
   planEditorVisible.value = true
@@ -872,7 +890,8 @@ const editMyCourse = (course: any) => {
 
 const saveMyPlan = async () => {
   if (!planForm.title.trim()) return ElMessage.warning('请填写计划标题')
-  if (planForm.actions.length === 0) return ElMessage.warning('请至少添加一个动作')
+  if (planForm.actions.length === 0) return ElMessage.warning('请至少添加一个训练日')
+  if (planForm.actions.some((a: any) => !a.courseId)) return ElMessage.warning('请为所有训练日选择课程')
   try {
     await request.post('/training/save', {
       id: editingPlanId.value || undefined,
@@ -1523,7 +1542,7 @@ const handleCompleteScheduleDirectly = async (id: number) => {
 
 const handleCancelPlan = async (planId: number) => {
   try {
-    await ElMessageBox.confirm('这会导致正在跟踪的整套计划与余下日程被取消退订，确定吗？', '取消退订确认', { type: 'danger' })
+    await ElMessageBox.confirm('这会导致正在跟踪的整套计划与余下日程被取消退订，确定吗？', '取消退订确认', { type: 'warning' })
     await request.post(`/training/unsubscribe/${planId}`) // Or delete API if fully implemented
     ElMessage.success('训练计划已取消并退订')
     fetchMonthSchedules(selectedDate.value)
@@ -2109,12 +2128,22 @@ onMounted(async () => {
   padding: 8px;
   margin-bottom: 16px;
 }
-.al-item {
+.al-item, .al-item-day {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   font-size: 13px;
   color: #475569;
-  padding: 4px 0;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.day-num-tab {
+  background: #eff6ff;
+  color: #3b82f6;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 800;
+  font-size: 11px;
 }
 
 .tc-footer {

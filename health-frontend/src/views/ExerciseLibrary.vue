@@ -116,15 +116,26 @@
       </div>
     </div>
 
-    <!-- Detail Dialog — using unified TrainingResourceViewer -->
-    <el-dialog v-model="detailVisible" width="540px" class="resource-detail-dialog" align-center destroy-on-close>
+    <!-- Unified Premium Action Detail Dialog -->
+    <el-dialog 
+      v-model="detailVisible" 
+      width="1100px" 
+      style="border-radius: 24px; overflow: hidden;"
+      class="premium-resource-dialog" 
+      align-center 
+      destroy-on-close
+    >
       <div v-if="currentEx">
-        <TrainingResourceViewer :item="currentEx" type="exercise" />
+        <TrainingResourceViewer :item="currentEx" type="exercise">
+           <template #left-actions v-if="selectMode">
+              <div class="integrated-actions">
+                 <el-button type="primary" size="large" class="btn-main" @click="handleSelect(currentEx)">
+                    选择此动作作为替换
+                 </el-button>
+              </div>
+           </template>
+        </TrainingResourceViewer>
       </div>
-      <template #footer>
-        <el-button @click="detailVisible = false" round>关闭</el-button>
-        <el-button v-if="selectMode" type="primary" round @click="handleSelect(currentEx)">选择此动作</el-button>
-      </template>
     </el-dialog>
   </div>
 </template>
@@ -373,6 +384,47 @@ onMounted(fetchExercises)
   color: #64748b;
 }
 .ex-type-chip { background: #eff6ff; color: #3b82f6; }
+
+/* Premium Training Detail Dialog Styles */
+:deep(.premium-resource-dialog) {
+  background: white;
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+:deep(.premium-resource-dialog .el-dialog__header) {
+  display: none;
+}
+
+:deep(.premium-resource-dialog .el-dialog__body) {
+  padding: 0 !important;
+}
+
+/* Integrated Actions inside TRV Left Side */
+.integrated-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: auto;
+  padding-top: 40px;
+}
+
+.btn-main {
+  flex: 1;
+  height: 52px !important;
+  font-weight: 800 !important;
+  font-size: 15px !important;
+  border-radius: 14px !important;
+  background: #3b82f6 !important;
+  border: none !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.btn-main:hover {
+  background: #2563eb !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3) !important;
+}
+
 .ex-desc {
   margin: 0;
   font-size: 12px;
@@ -381,73 +433,13 @@ onMounted(fetchExercises)
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2; /* Compatibility fix */
   -webkit-box-orient: vertical;
 }
 
-.ex-action {
-  padding: 12px 16px;
-  border-top: 1px solid #f1f5f9;
-  text-align: right;
-}
-
-.empty-state {
-  padding: 60px 0;
-}
-
-/* Detail dialog styles */
-.detail-content {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-.video-box {
-  background: #1e293b;
-  border-radius: 8px;
-  height: 200px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  gap: 12px;
-}
-
-.huge-icon { font-size: 64px; opacity: 0.8; }
-
-.detail-props {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  background: #f8fafc;
-  padding: 16px;
-  border-radius: 8px;
-}
-
-.prop-item {
-  display: flex;
-  justify-content: space-between;
-}
-.prop-item .label { color: #64748b; font-size: 13px; }
-.prop-item .value { font-weight: 600; color: #1e293b; font-size: 13px; }
-
-.detail-section h4 {
-  margin: 0 0 8px;
-  color: #1e293b;
-  font-size: 15px;
-}
-
-.desc-text {
-  margin: 0;
-  color: #475569;
-  line-height: 1.6;
-  font-size: 14px;
-}
-
-.error-list {
-  margin: 0;
-  padding-left: 20px;
-  color: #ef4444;
-  font-size: 14px;
+@media (max-width: 1024px) {
+  :deep(.premium-resource-dialog) {
+     width: 95% !important;
+  }
 }
 </style>

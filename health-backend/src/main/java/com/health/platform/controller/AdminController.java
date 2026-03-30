@@ -50,10 +50,15 @@ public class AdminController {
         return Result.success();
     }
 
-    @Operation(summary = "Delete user")
+    @Operation(summary = "Deactivate user (soft delete)")
     @DeleteMapping("/user/{id}")
     public Result<Void> deleteUser(@PathVariable Integer id) {
-        userMapper.deleteById(id);
+        SysUser user = userMapper.selectById(id);
+        if (user != null) {
+            user.setStatus(2);
+            user.setNickname("用户已注销");
+            userMapper.updateById(user);
+        }
         return Result.success();
     }
 
@@ -84,6 +89,7 @@ public class AdminController {
     public Result<Void> saveLibraryPlan(@RequestBody TrainingPlan plan) {
         if (plan.getIsPublic() == null) plan.setIsPublic(true);
         if (plan.getId() == null) {
+            plan.setUserId(StpUtil.getLoginIdAsInt());
             trainingMapper.insert(plan);
         } else {
             trainingMapper.updateById(plan);
@@ -110,6 +116,7 @@ public class AdminController {
     public Result<Void> saveLibraryCourse(@RequestBody Course course) {
         if (course.getIsPublic() == null) course.setIsPublic(true);
         if (course.getId() == null) {
+            course.setCreatorId(StpUtil.getLoginIdAsInt());
             courseMapper.insert(course);
         } else {
             courseMapper.updateById(course);

@@ -11,18 +11,35 @@
         router
         class="admin-menu"
       >
+        <el-menu-item index="/admin/dashboard">
+          <el-icon><TrendCharts /></el-icon>
+          <span>看板</span>
+        </el-menu-item>
+        
         <el-menu-item index="/admin/users">
           <el-icon><User /></el-icon>
           <span>全站用户管理</span>
         </el-menu-item>
-        <el-menu-item index="/admin/content">
-          <el-icon><MessageBox /></el-icon>
-          <span>社区帖子审核</span>
-        </el-menu-item>
-        <el-menu-item index="/admin/training">
-          <el-icon><Bicycle /></el-icon>
-          <span>公有训练库维护</span>
-        </el-menu-item>
+
+        <el-sub-menu index="/admin/community">
+          <template #title>
+            <el-icon><ChatDotRound /></el-icon>
+            <span>社区管理</span>
+          </template>
+          <el-menu-item index="/admin/community/posts">帖子管理</el-menu-item>
+          <el-menu-item index="/admin/community/activities">活动管理</el-menu-item>
+        </el-sub-menu>
+
+        <el-sub-menu index="/admin/content-library">
+          <template #title>
+            <el-icon><Files /></el-icon>
+            <span>内容库管理</span>
+          </template>
+          <el-menu-item index="/admin/content-library/actions">动作管理</el-menu-item>
+          <el-menu-item index="/admin/content-library/courses">课程管理</el-menu-item>
+          <el-menu-item index="/admin/content-library/plans">计划管理</el-menu-item>
+          <el-menu-item index="/admin/content-library/audit">训练共享审核</el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-aside>
     
@@ -71,7 +88,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { TrendCharts, User, MessageBox, Bicycle } from '@element-plus/icons-vue'
+import { TrendCharts, User, MessageBox, Bicycle, ChatDotRound, Files } from '@element-plus/icons-vue'
 import request from '../../api/request'
 
 const route = useRoute()
@@ -81,10 +98,21 @@ const nickname = ref('')
 const isAdmin = ref(false)
 
 const currentTitle = computed(() => {
+  if (route.path.includes('dashboard')) return '数据看板'
   if (route.path.includes('users')) return '用户管理'
-  if (route.path.includes('content')) return '社区审核'
-  if (route.path.includes('training')) return '训练资源库'
-  return '概览'
+  if (route.path.includes('community')) {
+     if (route.path.includes('posts')) return '社区管理 / 帖子与评论'
+     if (route.path.includes('activities')) return '社区管理 / 活动管理'
+     return '社区管理'
+  }
+  if (route.path.includes('content-library')) {
+     if (route.path.includes('actions')) return '内容库 / 动作管理'
+     if (route.path.includes('courses')) return '内容库 / 课程管理'
+     if (route.path.includes('plans')) return '内容库 / 计划管理'
+     if (route.path.includes('audit')) return '内容库 / 共享审核'
+     return '内容库管理'
+  }
+  return '管理后台'
 })
 
 const handleCommand = (cmd: string) => {

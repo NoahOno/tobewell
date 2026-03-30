@@ -1,0 +1,5 @@
+ALTER TABLE exercise ADD COLUMN cover_image TEXT;
+ALTER TABLE exercise ADD COLUMN duration TEXT;
+ALTER TABLE training_plan ADD COLUMN cover_image TEXT;
+ALTER TABLE training_plan ADD COLUMN audience TEXT;
+ALTER TABLE course ADD COLUMN audience TEXT;

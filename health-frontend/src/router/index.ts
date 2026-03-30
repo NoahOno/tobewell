@@ -97,22 +97,61 @@ const routes: Array<RouteRecordRaw> = [
     {
         path: '/admin',
         component: () => import('../views/admin/AdminLayout.vue'),
-        redirect: '/admin/users',
+        redirect: '/admin/dashboard',
         children: [
+            {
+                path: 'dashboard',
+                name: 'AdminDashboard',
+                component: () => import('../views/admin/Dashboard.vue')
+            },
             {
                 path: 'users',
                 name: 'UserAdmin',
                 component: () => import('../views/admin/UserAdmin.vue')
             },
             {
-                path: 'content',
-                name: 'ContentAdmin',
-                component: () => import('../views/admin/ContentAdmin.vue')
+                // Community Management - Sub routes
+                path: 'community',
+                redirect: '/admin/community/posts',
+                children: [
+                    {
+                        path: 'posts',
+                        name: 'AdminCommunityPosts',
+                        component: () => import('../views/admin/CommunityPosts.vue')
+                    },
+                    {
+                        path: 'activities',
+                        name: 'AdminCommunityActivities',
+                        component: () => import('../views/admin/CommunityActivities.vue')
+                    }
+                ]
             },
             {
-                path: 'training',
-                name: 'TrainingAdmin',
-                component: () => import('../views/admin/TrainingAdmin.vue')
+                // Content Library - Sub routes
+                path: 'content-library',
+                redirect: '/admin/content-library/actions',
+                children: [
+                    {
+                        path: 'actions',
+                        name: 'AdminLibraryActions',
+                        component: () => import('../views/admin/LibraryActions.vue')
+                    },
+                    {
+                        path: 'courses',
+                        name: 'AdminLibraryCourses',
+                        component: () => import('../views/admin/LibraryCourses.vue')
+                    },
+                    {
+                        path: 'plans',
+                        name: 'AdminLibraryPlans',
+                        component: () => import('../views/admin/LibraryPlans.vue')
+                    },
+                    {
+                        path: 'audit',
+                        name: 'AdminLibraryAudit',
+                        component: () => import('../views/admin/LibraryAudit.vue')
+                    }
+                ]
             }
         ]
     }

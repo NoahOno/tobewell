@@ -20,7 +20,9 @@ public class Exercise {
     private String commonErrors; // JSON string
     private String recommendedSets;
     private String imageUrl;
+    private String coverImage;
     private String videoUrl;
     private Boolean isPublic;
+    private String duration;
     private LocalDateTime createTime;
 }

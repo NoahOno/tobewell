@@ -20,5 +20,6 @@ public class Course {
     private Boolean isPublic;
     private Integer creatorId;
     private String coverImage;
+    private String audience;
     private LocalDateTime createTime;
 }

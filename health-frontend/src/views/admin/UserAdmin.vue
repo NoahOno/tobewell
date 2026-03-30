@@ -31,33 +31,41 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="status" label="账户状态" width="160">
+        <el-table-column prop="status" label="管控状态" width="180">
           <template #default="scope">
             <div class="status-cell">
-               <el-switch
-                v-model="scope.row.status"
-                :active-value="1"
-                :inactive-value="0"
-                @change="handleUpdateUser(scope.row)"
-              />
-              <el-tag :type="scope.row.status === 1 ? 'success' : 'info'" size="small" class="status-tag">
-                {{ scope.row.status === 1 ? '正常' : '已禁用' }}
+               <el-tooltip :content="scope.row.status === 2 ? '该账户已彻底注销' : '切换状态以封禁或恢复用户'" placement="top">
+                 <el-switch
+                  v-model="scope.row.status"
+                  :active-value="1"
+                  :inactive-value="0"
+                  :disabled="scope.row.role === 'ADMIN' || scope.row.status === 2"
+                  @change="handleUpdateUser(scope.row)"
+                />
+               </el-tooltip>
+              <el-tag :type="scope.row.status === 1 ? 'success' : (scope.row.status === 0 ? 'danger' : 'info')" size="small" class="status-tag">
+                {{ scope.row.status === 1 ? '正常' : (scope.row.status === 0 ? '已封禁' : '已注销') }}
               </el-tag>
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="createTime" label="注册日期" width="200">
+        <el-table-column prop="createTime" label="注册日期" width="160">
           <template #default="scope">
             <span class="date-text">{{ new Date(scope.row.createTime).toLocaleDateString() }}</span>
           </template>
         </el-table-column>
         <el-table-column label="管理操作" width="120" align="right">
           <template #default="scope">
-            <el-popconfirm title="确定删除该用户并清理其所有数据吗？此操作不可撤销。" @confirm="handleDeleteUser(scope.row.id)">
+            <el-popconfirm 
+              v-if="scope.row.status !== 2"
+              title="确定注销该用户吗？注销后其内容仍保留但归属于'已注销用户'，该操作不可逆。" 
+              @confirm="handleDeactivateUser(scope.row.id)"
+            >
               <template #reference>
-                <el-button type="danger" size="small" link :disabled="scope.row.role === 'ADMIN'">注销账户</el-button>
+                <el-button type="danger" size="small" link :disabled="scope.row.role === 'ADMIN'">注销账号</el-button>
               </template>
             </el-popconfirm>
+            <span v-else class="date-text">无</span>
           </template>
         </el-table-column>
       </el-table>
@@ -95,13 +103,13 @@ const handleUpdateUser = async (user: any) => {
   }
 }
 
-const handleDeleteUser = async (id: number) => {
+const handleDeactivateUser = async (id: number) => {
   try {
     await request.delete(`/admin/user/${id}`)
-    ElMessage.success('用户档案已移除')
+    ElMessage.success('用户已成功注销')
     fetchUsers()
   } catch (e) {
-    ElMessage.error('删除操作失败')
+    ElMessage.error('该操作暂时无法执行')
   }
 }
 

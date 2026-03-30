@@ -187,7 +187,7 @@
             <div class="placeholder-content premium-card">
               <div class="big-icon">{{ activeModule.icon }}</div>
               <h2>{{ activeModule.name }}</h2>
-              <p>{{ activeModule.description }}</p>
+                            <p>{{ activeModule.description }}</p>
               <el-tag type="info" round>即将上线</el-tag>
             </div>
           </div>
@@ -195,107 +195,46 @@
       </main>
     </div>
 
-    <!-- Plan Detail Dialog (Rich Preview) — using unified TrainingResourceViewer -->
-    <el-dialog v-model="showPlanDetail" width="660px" class="resource-detail-dialog" align-center destroy-on-close :show-close="false">
+    <!-- Unified Training Detail Dialogue -->
+    <el-dialog 
+      v-model="showPlanDetail" 
+      width="1100px" 
+      style="border-radius: 24px; overflow: hidden;"
+      class="premium-resource-dialog" 
+      align-center 
+      destroy-on-close 
+    >
       <div v-if="detailedPlan">
         <TrainingResourceViewer
-          :item="detailedPlan.isCourse ? detailedPlan : detailedPlan"
+          :item="detailedPlan"
           :type="detailedPlan.isCourse ? 'course' : 'plan'"
-        />
-        <!-- Hidden original header so footer still works -->
-        <div style="display:none" class="preview-header" :class="getCardTheme(detailedPlan.goal)">
-          <div class="preview-tags">
-            <span class="preview-tag">{{ detailedPlan.goal || '通用' }}</span>
-            <span class="preview-tag">{{ detailedPlan.difficulty || '初级' }}</span>
-          </div>
-          <h2>{{ detailedPlan.title }}</h2>
-          <div class="preview-meta">
-            <span><el-icon><Timer /></el-icon> {{ detailedPlan.duration || '4周' }}</span>
-            <span><el-icon><RefreshRight /></el-icon> {{ detailedPlan.frequency || '每周4天' }}</span>
-            <span><el-icon><Aim /></el-icon> {{ detailedPlan.audience || '新手适合' }}</span>
-          </div>
-        </div>
-
-        <!-- Auto-Generated Body Based on New Structure -->
-        <div class="preview-body">
-          <div class="section-title">{{ detailedPlan.isCourse ? '课程目标' : '计划目标' }}</div>
-          <p class="preview-desc">{{ detailedPlan.description || '帮助您在有限的时间内达到最佳的训练效果。' }}</p>
-
-          <!-- Plan Specific Viewer -->
-          <template v-if="!detailedPlan.isCourse">
-            <div class="section-title">详细日程安排</div>
-            <div class="week-preview">
-               <div class="day-row actionable-day" v-for="(day, idx) in parsedArrangement" :key="idx">
-                 <div class="day-num-badge">Day {{ day.day || idx + 1 }}</div>
-                 <div class="day-content flex-col">
-                   <div style="display:flex; justify-content: space-between; align-items: center; width:100%;">
-                     <span class="day-title" :class="{'is-rest': day.type === '休息'}">{{ day.title || day.type }}</span>
-                     <el-tag size="small" :type="day.type === '休息' ? 'success' : 'primary'" effect="plain">{{ day.type }}</el-tag>
-                   </div>
-                   <div v-if="day.type === '训练' && day.actions && day.actions.length > 0" class="mini-action-list">
-                     <span v-for="(act, aIdx) in day.actions" :key="aIdx" class="mini-action-badge">{{ act.name }}</span>
-                   </div>
-                 </div>
-               </div>
-               <el-empty v-if="parsedArrangement.length === 0" description="该计划暂未编排具体的日程" :image-size="60" />
+        >
+          <template #left-actions>
+            <div class="integrated-actions">
+              <el-button 
+                class="btn-main" 
+                type="primary" 
+                size="large" 
+                :disabled="detailedPlan.isCourse ? isCourseSubscribed(detailedPlan) : isSubscribed(detailedPlan)"
+                @click="detailedPlan.isCourse ? openCourseSchedule(detailedPlan) : openSubscribeConfig(detailedPlan)"
+              >
+                {{ (detailedPlan.isCourse ? isCourseSubscribed(detailedPlan) : isSubscribed(detailedPlan)) ? '✓ 已安排' : (detailedPlan.isCourse ? '立即开始训练课程' : '立即加入计划') }}
+              </el-button>
+              
+              <el-button 
+                class="btn-sec" 
+                :type="isCollected(detailedPlan) ? 'warning' : 'info'" 
+                plain
+                circle
+                size="large"
+                @click="toggleCollect(detailedPlan)"
+              >
+                <el-icon><Star v-if="!isCollected(detailedPlan)" /><StarFilled v-else /></el-icon>
+              </el-button>
             </div>
           </template>
-
-          <!-- Course Specific Viewer -->
-          <template v-else>
-            <div class="section-title">具体动作序列</div>
-            <div class="course-timeline-preview">
-              <el-timeline v-if="parsedArrangement.length > 0">
-                <el-timeline-item v-for="(act, idx) in parsedArrangement" :key="idx" :color="'#3b82f6'" size="large">
-                  <div class="c-action-node">
-                    <div class="ca-icon"><el-icon><VideoCamera /></el-icon></div>
-                    <div class="ca-details">
-                      <div class="ca-name">{{ act.name }}</div>
-                      <div class="ca-specs">
-                        <span class="ca-sets" v-if="act.sets">{{ act.sets }}</span>
-                        <span class="ca-rest" v-if="act.rest"><el-icon><Timer /></el-icon> {{ act.rest }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </el-timeline-item>
-              </el-timeline>
-              <el-empty v-else description="该课程暂未编排具体动作" :image-size="60" />
-            </div>
-          </template>
-
-        </div>
+        </TrainingResourceViewer>
       </div>
-
-    <template #footer>
-        <div class="resource-dialog-footer">
-          <el-button size="large" :type="isCollected(detailedPlan) ? 'warning' : 'default'" round @click="toggleCollect(detailedPlan)">
-            <el-icon><Star v-if="!isCollected(detailedPlan)" /><StarFilled v-else /></el-icon> {{ isCollected(detailedPlan) ? '已加入想练' : '加入想练' }}
-          </el-button>
-
-          <template v-if="detailedPlan.isCourse">
-            <el-button
-              type="primary"
-              size="large"
-              round
-              :disabled="isCourseSubscribed(detailedPlan)"
-              @click="openCourseSchedule(detailedPlan)"
-            >
-              {{ isCourseSubscribed(detailedPlan) ? '✓ 已安排' : '立即安排训练' }}
-            </el-button>
-          </template>
-          <template v-else>
-            <el-button
-              type="primary"
-              size="large"
-              round
-              :disabled="isSubscribed(detailedPlan)"
-              @click="openSubscribeConfig(detailedPlan)"
-            >
-              {{ isSubscribed(detailedPlan) ? '✓ 已加入' : '开始此计划' }}
-            </el-button>
-          </template>
-        </div>
-      </template>
     </el-dialog>
 
     <!-- Subscribe Config Dialog -->
@@ -370,7 +309,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { Search, Plus, Calendar, Timer, User, RefreshRight, Location, UserFilled, Aim, MagicStick, VideoCamera, Star, StarFilled, InfoFilled } from '@element-plus/icons-vue'
+import { Search, Plus, Calendar, Timer, User, RefreshRight, Location, UserFilled, Aim, MagicStick, VideoCamera, Star, StarFilled, InfoFilled, List } from '@element-plus/icons-vue'
 import TrainingResourceViewer from '../components/TrainingResourceViewer.vue'
 import { ElMessage } from 'element-plus'
 import request from '../api/request'
@@ -1327,4 +1266,140 @@ watch(() => route.query.tab, (newTab) => {
 .ca-sets { font-weight: 600; color: #334155; }
 .ca-rest { display: flex; align-items: center; gap: 4px; color: #f59e0b; }
 
+/* Premium Training Detail Dialog Styles */
+:deep(.premium-resource-dialog) {
+  background: white;
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+:deep(.premium-resource-dialog .el-dialog__header) {
+  display: none;
+}
+
+:deep(.premium-resource-dialog .el-dialog__body) {
+  padding: 0 !important;
+}
+
+.training-detail-container {
+  display: flex;
+  flex-direction: column;
+  height: 80vh;
+  max-height: 850px;
+  background: white;
+}
+
+.td-layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.td-media-side {
+  flex: 1.3;
+  background: #0f172a;
+  padding: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.media-window {
+  position: relative;
+  flex: 1;
+  background: #1e293b;
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+}
+
+.main-demo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.media-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  color: #475569;
+}
+
+.floating-stats {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  display: flex;
+  gap: 12px;
+}
+
+/* Premium Training Detail Dialog Styles */
+:deep(.premium-resource-dialog) {
+  background: white;
+  border-radius: 24px;
+  overflow: hidden;
+}
+
+:deep(.premium-resource-dialog .el-dialog__header) {
+  display: none;
+}
+
+:deep(.premium-resource-dialog .el-dialog__body) {
+  padding: 0 !important;
+}
+
+/* Integrated Actions inside TRV Left Side */
+.integrated-actions {
+  display: flex;
+  gap: 16px;
+  margin-top: auto;
+  padding-top: 40px;
+}
+
+.btn-main {
+  flex: 1;
+  height: 52px !important;
+  font-weight: 800 !important;
+  font-size: 15px !important;
+  border-radius: 14px !important;
+  background: #3b82f6 !important;
+  border: none !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.btn-main:hover {
+  background: #2563eb !important;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3) !important;
+}
+
+.btn-sec {
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 14px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: white !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s !important;
+}
+
+.btn-sec:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  :deep(.premium-resource-dialog) {
+     width: 95% !important;
+  }
+}
 </style>

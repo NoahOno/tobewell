@@ -37,3 +37,6 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+custom:
+  upload-path: d:/Coding/graduationProj002/uploads/
+  upload-url-prefix: http://localhost:8080/uploads/

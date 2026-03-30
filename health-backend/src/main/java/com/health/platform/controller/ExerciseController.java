@@ -31,6 +31,10 @@ public class ExerciseController {
                                      @RequestParam(required = false) String difficulty) {
         LambdaQueryWrapper<Exercise> wrapper = new LambdaQueryWrapper<Exercise>();
         
+        if (!cn.dev33.satoken.stp.StpUtil.hasRole("ADMIN")) {
+            wrapper.eq(Exercise::getIsPublic, true);
+        }
+        
         if (keyword != null && !keyword.isEmpty()) {
             wrapper.like(Exercise::getName, keyword);
         }
