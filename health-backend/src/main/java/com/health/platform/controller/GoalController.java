@@ -40,7 +40,7 @@ public class GoalController {
     }
 
     @DeleteMapping("/{id}")
-    public Result<Void> deleteGoal(@PathVariable Integer id) {
+    public Result<Void> deleteGoal(@PathVariable("id") Integer id) {
         goalMapper.deleteById(id);
         return Result.success();
     }

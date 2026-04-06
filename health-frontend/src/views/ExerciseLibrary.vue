@@ -3,7 +3,6 @@
     <div class="header">
       <div class="header-left">
         <h2>{{ selectMode ? '选择替换动作' : '动作图鉴' }}</h2>
-        <p v-if="!selectMode">标准动作数据库，探索所有适合您的训练动作</p>
       </div>
       <div class="header-right">
         <el-input

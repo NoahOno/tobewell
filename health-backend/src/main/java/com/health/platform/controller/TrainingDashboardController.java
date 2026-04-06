@@ -90,7 +90,7 @@ public class TrainingDashboardController {
 
     @Operation(summary = "Get last N days training trend")
     @GetMapping("/trend")
-    public Result<Map<String, Object>> getTrend(@RequestParam(defaultValue = "7") int days) {
+    public Result<Map<String, Object>> getTrend(@RequestParam(value = "days", defaultValue = "7") int days) {
         Integer userId = StpUtil.getLoginIdAsInt();
         LocalDate today = LocalDate.now();
         int d = Math.max(1, Math.min(30, days));
@@ -142,7 +142,7 @@ public class TrainingDashboardController {
 
     @Operation(summary = "Get latest training items")
     @GetMapping("/recent")
-    public Result<Map<String, Object>> getRecent(@RequestParam(defaultValue = "10") int limit) {
+    public Result<Map<String, Object>> getRecent(@RequestParam(value = "limit", defaultValue = "10") int limit) {
         Integer userId = StpUtil.getLoginIdAsInt();
         int l = Math.max(1, Math.min(50, limit));
 

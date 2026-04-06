@@ -53,74 +53,90 @@
     </div>
 
     <!-- Edit/Add Drawer -->
-    <el-drawer v-model="drawerVisible" :title="formPlan.id ? '编辑训练计划' : '构建训练计划'" size="550px" destroy-on-close>
+    <el-drawer v-model="drawerVisible" :title="formPlan.id ? '编辑训练计划' : '构建训练计划'" size="850px" destroy-on-close>
        <div style="padding: 24px;">
          <el-form :model="formPlan" label-position="top">
-           
-           <el-form-item label="计划标题"><el-input v-model="formPlan.title" /></el-form-item>
-           
-           <el-form-item label="计划封面 (图片上传)">
-              <el-upload
-                class="premium-uploader banner-uploader"
-                action="/api/file/upload"
-                :headers="uploadHeaders"
-                :show-file-list="false"
-                :on-success="handleUploadSuccess"
-              >
-                <img v-if="formPlan.coverImage" :src="formPlan.coverImage" class="uploader-preview" />
-                <div v-else class="uploader-placeholder">
-                  <el-icon class="uploader-icon"><Plus /></el-icon>
-                  <span>上传计划封面</span>
-                </div>
-              </el-upload>
-           </el-form-item>
+           <el-row :gutter="32">
+             <!-- 左侧基础信息 -->
+             <el-col :span="10">
+               <el-form-item label="计划封面 (图片上传)">
+                  <el-upload
+                    class="premium-uploader banner-uploader"
+                    style="height: 200px;"
+                    action="/api/file/upload"
+                    :headers="uploadHeaders"
+                    :show-file-list="false"
+                    :on-success="handleUploadSuccess"
+                  >
+                    <img v-if="formPlan.coverImage" :src="formPlan.coverImage" class="uploader-preview" />
+                    <div v-else class="uploader-placeholder">
+                      <el-icon class="uploader-icon"><Plus /></el-icon>
+                      <span>上传计划封面</span>
+                    </div>
+                  </el-upload>
+               </el-form-item>
+               <el-form-item label="计划标题"><el-input v-model="formPlan.title" placeholder="填写计划名字" /></el-form-item>
+               <el-row :gutter="12">
+                 <el-col :span="12">
+                   <el-form-item label="目标分类"><el-input v-model="formPlan.category" placeholder="如: 减脂" /></el-form-item>
+                 </el-col>
+                 <el-col :span="12">
+                   <el-form-item label="计划周期"><el-input v-model="formPlan.duration" placeholder="如: 4周" /></el-form-item>
+                 </el-col>
+               </el-row>
+               <el-form-item label="适合人群"><el-input v-model="formPlan.audience" placeholder="如: 新手" /></el-form-item>
+             </el-col>
 
-           <el-row :gutter="16">
-             <el-col :span="8"><el-form-item label="计划周期 (如: 4周)"><el-input v-model="formPlan.duration" /></el-form-item></el-col>
-             <el-col :span="8"><el-form-item label="目标分类 (如: 减脂)"><el-input v-model="formPlan.category" /></el-form-item></el-col>
-             <el-col :span="8"><el-form-item label="适合人群"><el-input v-model="formPlan.audience" /></el-form-item></el-col>
+             <!-- 右侧核心训练信息 -->
+             <el-col :span="14">
+               <el-form-item label="计划详情简介">
+                 <el-input v-model="formPlan.description" type="textarea" :rows="3" placeholder="填写关于本计划的简介" />
+               </el-form-item>
+               
+               <el-divider>周期结构编排</el-divider>
+               <el-button type="primary" size="small" plain @click="addPlanDay" style="margin-bottom: 12px;">新增一天</el-button>
+               <div class="plan-days-list" style="max-height: 350px; overflow-y: auto; padding-right: 8px;">
+                  <div v-for="(day, dIdx) in formPlan.parsedActions" :key="dIdx" class="day-card">
+                     <div class="day-header">
+                        <span class="day-num">Day {{ Number(dIdx) + 1 }}</span>
+                        <el-select v-model="day.type" size="small" style="width: 100px;">
+                           <el-option label="训练日" value="训练" />
+                           <el-option label="休息日" value="休息" />
+                        </el-select>
+                        <el-button type="danger" size="small" link @click="formPlan.parsedActions.splice(dIdx, 1)">移除</el-button>
+                     </div>
+                     <div v-if="day.type === '训练'" class="day-body">
+                        <el-select 
+                          v-model="day.courseId" 
+                          placeholder="选择关联训练课程" 
+                          style="width: 100%"
+                          filterable
+                          @change="(val: number) => handleCourseChange(val, day)"
+                        >
+                          <el-option 
+                            v-for="c in courses" 
+                            :key="c.id" 
+                            :label="c.title" 
+                            :value="c.id" 
+                          />
+                        </el-select>
+                     </div>
+                     <div v-else class="day-body rest-hint" style="color: #64748b; font-size: 13px;">
+                        🛌 身体建议在这一天进行主动恢复或完全休息
+                     </div>
+                  </div>
+                  <div v-if="!formPlan.parsedActions || formPlan.parsedActions.length === 0" style="text-align: center; color: #94a3b8; font-size: 13px; padding: 24px 0;">
+                    暂无周期编排，请点击上方按钮新增
+                  </div>
+               </div>
+             </el-col>
            </el-row>
-           <el-form-item label="计划详情简介"><el-input v-model="formPlan.description" type="textarea" :rows="3" /></el-form-item>
-           
-           <el-divider>周期结构编排</el-divider>
-           <el-button type="primary" size="small" plain @click="addPlanDay">新增一天</el-button>
-           <div class="plan-days-list">
-              <div v-for="(day, dIdx) in formPlan.parsedActions" :key="dIdx" class="day-card">
-                 <div class="day-header">
-                    <span class="day-num">Day {{ Number(dIdx) + 1 }}</span>
-                    <el-select v-model="day.type" size="small" style="width: 100px;">
-                       <el-option label="训练日" value="训练" />
-                       <el-option label="休息日" value="休息" />
-                    </el-select>
-                    <el-button type="danger" size="small" link @click="formPlan.parsedActions.splice(dIdx, 1)">移除</el-button>
-                 </div>
-                 <div v-if="day.type === '训练'" class="day-body">
-                    <el-select 
-                      v-model="day.courseId" 
-                      placeholder="选择关联训练课程" 
-                      style="width: 100%"
-                      filterable
-                      @change="(val: number) => handleCourseChange(val, day)"
-                    >
-                      <el-option 
-                        v-for="c in courses" 
-                        :key="c.id" 
-                        :label="c.title" 
-                        :value="c.id" 
-                      />
-                    </el-select>
-                 </div>
-                 <div v-else class="day-body rest-hint">
-                    🛌 身体建议在这一天进行主动恢复或完全休息
-                 </div>
-              </div>
-           </div>
          </el-form>
        </div>
        <template #footer>
           <div style="display:flex; justify-content: flex-end; padding:16px;">
             <el-button @click="drawerVisible = false">取消</el-button>
-            <el-button type="primary" @click="savePlan">保存</el-button>
+            <el-button type="primary" @click="savePlan">保存编排</el-button>
           </div>
        </template>
     </el-drawer>

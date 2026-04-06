@@ -11,6 +11,19 @@ CREATE TABLE training_record (
     FOREIGN KEY (user_id) REFERENCES sys_user(id)
 );
 
+-- Add count_mode and topic_stat_mode columns to activity table
+ALTER TABLE activity ADD COLUMN count_mode TEXT;
+ALTER TABLE activity ADD COLUMN topic_stat_mode TEXT;
+
+-- Update existing challenge activities (type 2) to use DAYS mode by default
+UPDATE activity SET count_mode = 'DAYS' WHERE activity_type = 2 AND count_mode IS NULL;
+
+-- Update existing topic activities (type 3) to use COUNT mode by default
+UPDATE activity SET topic_stat_mode = 'COUNT' WHERE activity_type = 3 AND topic_stat_mode IS NULL;
+
+-- Type 1 check-in activities: default count mode (if column exists from prior migrations)
+UPDATE activity SET count_mode = 'DAYS' WHERE activity_type = 1 AND (count_mode IS NULL OR count_mode = '');
+
 CREATE TABLE IF NOT EXISTS course (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title TEXT NOT NULL,

@@ -36,7 +36,7 @@
     </el-header>
 
     <el-container class="sub-container">
-      <el-aside v-if="activeTopModule !== 'community'" width="220px" class="aside">
+      <el-aside v-if="userInfo.role !== 'ADMIN' || activeTopModule !== 'admin'" width="220px" class="aside">
         <el-menu
           :default-active="activeSidebarItem"
           class="sidebar-menu"
@@ -85,9 +85,26 @@
           </template>
 
           <template v-else-if="activeTopModule === 'community'">
-            <el-menu-item index="/app/community">
-              <el-icon><MessageBox /></el-icon>
-              <span>社区广场</span>
+            <el-menu-item index="/app/community?tab=recommend">
+              <el-icon><Star /></el-icon>
+              <span>推荐广场</span>
+            </el-menu-item>
+            <el-menu-item index="/app/community?tab=following">
+              <el-icon><User /></el-icon>
+              <span>我的关注</span>
+            </el-menu-item>
+            <el-menu-item index="/app/community?tab=hot">
+              <el-icon><HotWater /></el-icon>
+              <span>热门精选</span>
+            </el-menu-item>
+            <el-menu-item index="/app/community?tab=mine">
+              <el-icon><EditPen /></el-icon>
+              <span>我的发帖</span>
+            </el-menu-item>
+            <div style="height:1px; background:#F1F5F9; margin:12px 8px;"></div>
+            <el-menu-item index="/app/community?tab=activityCenter">
+              <el-icon><Trophy /></el-icon>
+              <span>活动中心</span>
             </el-menu-item>
           </template>
 
@@ -96,19 +113,23 @@
               <el-icon><Odometer /></el-icon>
               <span>我的数据</span>
             </el-menu-item>
+            <el-menu-item index="/app/my-activities">
+              <el-icon><Trophy /></el-icon>
+              <span>我的活动</span>
+            </el-menu-item>
             <el-menu-item index="/app/collections">
               <el-icon><Star /></el-icon>
               <span>我的收藏</span>
             </el-menu-item>
             <el-menu-item index="/app/records">
               <el-icon><EditPen /></el-icon>
-              <span>健康档案</span>
+              <span>我的动态</span>
             </el-menu-item>
           </template>
         </el-menu>
       </el-aside>
       
-      <el-main class="main">
+      <el-main class="main" :class="{ 'transparent-main': activeTopModule === 'community' }">
         <router-view />
       </el-main>
     </el-container>
@@ -118,7 +139,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Odometer, MessageBox, TrendCharts, EditPen, Calendar, User, Timer, Aim, Collection, Star, Bicycle } from '@element-plus/icons-vue'
+import { Odometer, MessageBox, TrendCharts, EditPen, Calendar, User, Timer, Aim, Collection, Star, Bicycle, Trophy, HotWater } from '@element-plus/icons-vue'
 import request from '../api/request'
 
 const route = useRoute()
@@ -132,7 +153,8 @@ watch(() => route.path, (path) => {
   else if (path.includes('/community')) activeTopModule.value = 'community'
   else if (path.includes('/explore') || path.includes('/exercises')) activeTopModule.value = 'explore'
   else if (path.includes('/training')) activeTopModule.value = 'training'
-  else if (path.includes('/mine') || path.includes('/dashboard') || path.includes('/records') || path.includes('/profile')) {
+  else if (path.includes('/mine') || path.includes('/dashboard') || path.includes('/records') || path.includes('/profile')
+      || path.includes('/my-activities') || path.includes('/collections')) {
     activeTopModule.value = 'mine'
   }
 }, { immediate: true })
@@ -178,6 +200,9 @@ const handleCommand = (command: string) => {
 }
 
 const activeSidebarItem = computed(() => {
+  if (route.path === '/app/my-activities') {
+    return '/app/my-activities'
+  }
   if (route.path === '/app/training') {
     return route.query.tab ? `/app/training?tab=${route.query.tab}` : '/app/training?tab=calendar'
   }
@@ -185,6 +210,10 @@ const activeSidebarItem = computed(() => {
     if (route.query.tab) return `/app/explore?tab=${route.query.tab}`
     // Default highlight to "训练计划" when landing on /app/explore
     return '/app/explore?tab=plans'
+  }
+  if (route.path.startsWith('/app/community')) {
+    if (route.query.tab) return `/app/community?tab=${route.query.tab}`
+    return '/app/community?tab=recommend'
   }
   return route.path
 })
@@ -226,6 +255,7 @@ onMounted(() => {
 .sub-container {
   flex: 1;
   overflow: hidden;
+  min-height: 0;
   padding: 20px;
   gap: 18px;
 }
@@ -342,12 +372,22 @@ onMounted(() => {
 }
 
 .main {
+  flex: 1;
+  min-height: 0;
   padding: 0;
   overflow-y: auto;
   background: var(--surface-1);
   border: 1px solid #e5edf1;
   border-radius: var(--radius-card);
   box-shadow: var(--shadow-premium);
+}
+
+.main.transparent-main {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  overflow: hidden; /* Prevent nested scrolling conflicts */
 }
 
 @media (max-width: 1100px) {

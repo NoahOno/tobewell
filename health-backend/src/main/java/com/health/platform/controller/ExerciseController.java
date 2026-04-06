@@ -24,11 +24,11 @@ public class ExerciseController {
 
     @Operation(summary = "Get all exercises")
     @GetMapping("/list")
-    public Result<List<Exercise>> list(@RequestParam(required = false) String keyword, 
-                                     @RequestParam(required = false) String muscle,
-                                     @RequestParam(required = false) String type,
-                                     @RequestParam(required = false) String equipment,
-                                     @RequestParam(required = false) String difficulty) {
+    public Result<List<Exercise>> list(@RequestParam(value = "keyword", required = false) String keyword, 
+                                     @RequestParam(value = "muscle", required = false) String muscle,
+                                     @RequestParam(value = "type", required = false) String type,
+                                     @RequestParam(value = "equipment", required = false) String equipment,
+                                     @RequestParam(value = "difficulty", required = false) String difficulty) {
         LambdaQueryWrapper<Exercise> wrapper = new LambdaQueryWrapper<Exercise>();
         
         if (!cn.dev33.satoken.stp.StpUtil.hasRole("ADMIN")) {
@@ -57,7 +57,7 @@ public class ExerciseController {
 
     @Operation(summary = "Get exercise detail")
     @GetMapping("/{id}")
-    public Result<Exercise> detail(@PathVariable Integer id) {
+    public Result<Exercise> detail(@PathVariable("id") Integer id) {
         return Result.success(exerciseMapper.selectById(id));
     }
 
@@ -76,7 +76,7 @@ public class ExerciseController {
     @Operation(summary = "Admin: Offline exercise")
     @DeleteMapping("/{id}")
     @SaCheckRole("ADMIN")
-    public Result<Void> delete(@PathVariable Integer id) {
+    public Result<Void> delete(@PathVariable("id") Integer id) {
         Exercise e = exerciseMapper.selectById(id);
         if (e != null) { e.setIsPublic(false); exerciseMapper.updateById(e); }
         return Result.success();

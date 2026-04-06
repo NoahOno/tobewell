@@ -17,8 +17,12 @@ public class ActivityTask {
     private Integer participationId;
     private Integer dailyScheduleId;
 
+    private LocalDate taskDate;
     private LocalDate scheduledDate;
     private Integer taskIndex;
+
+    private String taskType; // PLAN, COURSE, CHECKIN, TOPIC
+    private Integer taskId;
 
     // PENDING/COMPLETED/SKIPPED
     private String status;

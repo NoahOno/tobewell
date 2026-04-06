@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS community_post (
     collection_count INTEGER DEFAULT 0,
     comment_count INTEGER DEFAULT 0,
     view_count INTEGER DEFAULT 0,
+    images TEXT,
     status TEXT DEFAULT 'published',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -78,11 +79,17 @@ CREATE TABLE IF NOT EXISTS health_metric (
 );
 
 -- Initial Data
-INSERT OR IGNORE INTO sys_user (username, password, nickname, role) 
-VALUES ('admin', '123456', 'Administrator', 'ADMIN');
+INSERT OR IGNORE INTO sys_user (id, username, password, nickname, role) 
+VALUES (1, 'admin', '123456', 'Administrator', 'ADMIN');
 
-INSERT OR IGNORE INTO sys_user (username, password, nickname, role) 
-VALUES ('user', '123456', 'Test User', 'USER');
+INSERT OR IGNORE INTO sys_user (id, username, password, nickname, role) 
+VALUES (2, 'user', '123456', 'Test User', 'USER');
+
+INSERT OR IGNORE INTO sys_user (id, username, password, nickname, role) 
+VALUES (3, 'user2', '123456', '李四', 'USER');
+
+INSERT OR IGNORE INTO sys_user (id, username, password, nickname, role) 
+VALUES (4, 'user3', '123456', '王五', 'USER');
 
 -- Training Plan Table
 CREATE TABLE IF NOT EXISTS training_plan (
@@ -98,6 +105,10 @@ CREATE TABLE IF NOT EXISTS training_plan (
     duration TEXT,
     actions TEXT,
     is_public BOOLEAN DEFAULT 0,
+    source_id INTEGER,
+    is_subscribed BOOLEAN DEFAULT 0,
+    cover_image TEXT,
+    audience TEXT,
     FOREIGN KEY (user_id) REFERENCES sys_user(id)
 );
 
@@ -153,7 +164,8 @@ CREATE TABLE IF NOT EXISTS collection (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
     target_id INTEGER NOT NULL,
-    target_type TEXT NOT NULL, -- 'CONTENT' or 'PLAN'
+    target_type TEXT NOT NULL, -- 'CONTENT', 'PLAN', 'POST', 'COURSE'
+    target_title TEXT,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, target_id, target_type),
     FOREIGN KEY (user_id) REFERENCES sys_user(id)
@@ -244,6 +256,7 @@ CREATE TABLE IF NOT EXISTS course (
     is_public BOOLEAN DEFAULT 0,
     creator_id INTEGER,
     cover_image TEXT,
+    audience TEXT,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (creator_id) REFERENCES sys_user(id)
 );
@@ -276,6 +289,9 @@ CREATE TABLE IF NOT EXISTS exercise (
     recommended_sets TEXT,
     image_url TEXT,
     video_url TEXT,
+    cover_image TEXT,
+    is_public BOOLEAN DEFAULT 0,
+    duration TEXT,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -302,11 +318,18 @@ CREATE TABLE IF NOT EXISTS activity (
     description_html TEXT,
     start_time DATETIME NOT NULL,
     end_time DATETIME,
-    template_type TEXT NOT NULL, -- 'PLAN' or 'COURSE'
-    template_id INTEGER NOT NULL, -- training_plan.id or course.id
+    
+    activity_type INTEGER NOT NULL DEFAULT 1, -- 1: General, 2: Content, 3: Topic
+    template_type TEXT, -- Used for type 2: 'PLAN' or 'COURSE'
+    template_id INTEGER, -- Used for type 2
+    topic_name TEXT, -- Used for type 3
+    count_mode TEXT, -- Challenge count mode: COUNT (by times) or DAYS (by days)
+    topic_stat_mode TEXT, -- Topic stat mode: SHARED, DAYS, COUNT
+    reward_points INTEGER DEFAULT 0,
+    
     required_days INTEGER NOT NULL DEFAULT 7,
     pinned INTEGER DEFAULT 0, -- 1 pinned, 0 normal
-    status TEXT DEFAULT 'ONLINE', -- ONLINE/OFFLINE
+    status TEXT DEFAULT 'DRAFT', -- DRAFT/ONLINE/OFFLINE
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -322,17 +345,18 @@ CREATE TABLE IF NOT EXISTS activity_participation (
     FOREIGN KEY (activity_id) REFERENCES activity(id)
 );
 
--- Bind each activity day to a concrete daily_schedule row
+-- Activity task rows: either linked to daily_schedule (positive daily_schedule_id) or synthetic negative id for check-ins / generated challenge days
 CREATE TABLE IF NOT EXISTS activity_task (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     participation_id INTEGER NOT NULL,
-    daily_schedule_id INTEGER NOT NULL,
-    scheduled_date DATE NOT NULL,
-    task_index INTEGER NOT NULL,
-    status TEXT DEFAULT 'PENDING', -- PENDING/COMPLETED/SKIPPED
+    daily_schedule_id INTEGER,
+    scheduled_date DATE,
+    task_date DATE,
+    task_type TEXT,
+    task_id INTEGER,
+    task_index INTEGER,
+    status TEXT DEFAULT 'PENDING',
     completed_time DATETIME,
-    UNIQUE(daily_schedule_id),
-    UNIQUE(participation_id, task_index),
     FOREIGN KEY (participation_id) REFERENCES activity_participation(id)
 );
 
@@ -354,3 +378,23 @@ CREATE INDEX IF NOT EXISTS idx_activity_start_time ON activity(start_time);
 CREATE INDEX IF NOT EXISTS idx_activity_participation_activity ON activity_participation(activity_id);
 CREATE INDEX IF NOT EXISTS idx_activity_task_participation ON activity_task(participation_id);
 CREATE INDEX IF NOT EXISTS idx_activity_dynamic_activity ON activity_dynamic(activity_id);
+
+-- Mock Data for Course
+INSERT OR IGNORE INTO course (id, title, description, category, difficulty, duration_minutes, is_public, creator_id, create_time)
+VALUES 
+(1, '唤醒晨间瑜伽', '每天早晨15分钟的全身拉伸与瑜伽跟练，帮助唤醒身体活力。', '瑜伽拉伸', '初级', 15, 1, 1, datetime('now')),
+(2, '心肺燃烧HIIT', '高强度间歇训练，快速燃脂。', '减脂', '高级', 20, 1, 1, datetime('now')),
+(3, '居家腹肌雕刻', '睡前10分钟核心燃脂挑战。', '塑形', '中级', 10, 1, 1, datetime('now'));
+
+-- Mock Data for Training Plan
+INSERT OR IGNORE INTO training_plan (id, user_id, title, description, category, duration, is_public, start_date, end_date)
+VALUES 
+(1, 1, '四周减脂挑战计划', '针对新手的四周平缓减脂周期。', '减脂', '4周', 1, date('now'), date('now', '+28 days')),
+(2, 1, '零基础增肌入门', '快速掌握力量训练的核心要领。', '增肌', '6周', 1, date('now'), date('now', '+42 days'));
+
+-- Mock Data for Activities
+INSERT OR IGNORE INTO activity (id, title, description_html, activity_type, template_type, template_id, topic_name, reward_points, required_days, status, start_time, end_time)
+VALUES 
+(1, '晨间早起早打卡', '<p>每天早上8点前过来打卡签到，记录你今日的情绪与状态，迎接美好的一天！</p>', 1, NULL, NULL, NULL, 50, 7, 'ONLINE', datetime('now', '-2 days'), datetime('now', '+14 days')),
+(2, '四周马甲线速成挑战', '<p>加入本周期的官方专属减脂计划，坚持4周完成训练并记录体脂即可获得永久头像框！</p>', 2, 'PLAN', 1, NULL, 500, 21, 'ONLINE', datetime('now', '-5 days'), datetime('now', '+23 days')),
+(3, '春日低脂便当大赏', '<p>拍下你今天亲自制作的低脂便当，带上话题分享到社区，我们将为最具创意的50名用户颁发奖品！</p>', 3, NULL, NULL, '#春日低脂便当', 100, 3, 'ONLINE', datetime('now', '-1 days'), datetime('now', '+10 days'));

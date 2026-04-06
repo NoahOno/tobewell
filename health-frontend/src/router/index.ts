@@ -82,6 +82,11 @@ const routes: Array<RouteRecordRaw> = [
                 component: () => import('../views/Collections.vue')
             },
             {
+                path: 'my-activities',
+                name: 'MyActivities',
+                component: () => import('../views/MyActivities.vue')
+            },
+            {
                 path: 'mine',
                 name: 'Mine',
                 component: () => import('../views/Dashboard.vue')
@@ -163,7 +168,11 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-    const token = localStorage.getItem('token')
+    let token = localStorage.getItem('token')
+    if (token === 'null' || token === 'undefined' || token === '') {
+        token = null
+        localStorage.removeItem('token')
+    }
     const publicPages = ['/', '/login', '/register']
     const authRequired = !publicPages.includes(to.path)
 

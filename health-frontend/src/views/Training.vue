@@ -133,7 +133,7 @@
             </template>
           </div>
 
-          <div class="calendar-right">
+          <div class="calendar-right" v-if="calendarView === 'month'">
             <div class="selected-date-display">{{ formattedSelectedDate }}</div>
             
             <div class="daily-tasks-wrapper">
@@ -162,113 +162,39 @@
 
       <!-- Active Training Plans Management -->
       <template v-if="activeMenu === 'plans'">
-        <div class="train-header">
-          <div class="train-header-left">
-            <div class="train-title-row">
-              <h2>训练管控</h2>
-              <el-radio-group v-model="myTrainingTab" size="small">
-                <el-radio-button label="plans">训练计划</el-radio-button>
-                <el-radio-button label="courses">单次课程</el-radio-button>
-              </el-radio-group>
-            </div>
-            <p>搜索与筛选你正在推进的训练内容，快速找到今天要练的那一个。</p>
-          </div>
-          <div class="train-header-right">
-            <el-input
-              v-model="trainQuery.keyword"
-              placeholder="搜索标题或描述..."
-              class="search-input"
-              clearable
-              @keyup.enter="noopSearch"
-              @clear="noopSearch"
-            >
-              <template #prefix><el-icon><Search /></el-icon></template>
-            </el-input>
-            <el-button type="primary" @click="noopSearch">搜索</el-button>
-          </div>
+        <div class="section-header">
+          <h3>训练管理</h3>
+          <el-radio-group v-model="favoriteTab" size="small">
+            <el-radio-button label="plans">计划</el-radio-button>
+            <el-radio-button label="courses">课程</el-radio-button>
+          </el-radio-group>
         </div>
 
-        <div class="filters-card premium-card">
-          <template v-if="myTrainingTab === 'plans'">
-            <div class="filter-row">
-              <span class="filter-label">目标</span>
-              <div class="filter-options">
-                <el-tag v-for="g in planGoals" :key="g" :effect="trainQuery.planGoal === g ? 'dark' : 'plain'" class="filter-tag" @click="trainQuery.planGoal = g">{{ g }}</el-tag>
-              </div>
-            </div>
-            <div class="filter-row">
-              <span class="filter-label">难度</span>
-              <div class="filter-options">
-                <el-tag v-for="d in planDifficulties" :key="d" :effect="trainQuery.planDifficulty === d ? 'dark' : 'plain'" class="filter-tag" @click="trainQuery.planDifficulty = d">{{ d }}</el-tag>
-              </div>
-            </div>
-            <div class="filter-row">
-              <span class="filter-label">频次</span>
-              <div class="filter-options">
-                <el-tag v-for="f in planFrequencies" :key="f" :effect="trainQuery.planFrequency === f ? 'dark' : 'plain'" class="filter-tag" @click="trainQuery.planFrequency = f">{{ f }}</el-tag>
-              </div>
-            </div>
-          </template>
-          <template v-else>
-            <div class="filter-row">
-              <span class="filter-label">分类</span>
-              <div class="filter-options">
-                <el-tag v-for="c in courseCategories" :key="c" :effect="trainQuery.courseCategory === c ? 'dark' : 'plain'" class="filter-tag" @click="trainQuery.courseCategory = c">{{ c }}</el-tag>
-              </div>
-            </div>
-            <div class="filter-row">
-              <span class="filter-label">难度</span>
-              <div class="filter-options">
-                <el-tag v-for="d in courseDifficulties" :key="d" :effect="trainQuery.courseDifficulty === d ? 'dark' : 'plain'" class="filter-tag" @click="trainQuery.courseDifficulty = d">{{ d }}</el-tag>
-              </div>
-            </div>
-            <div class="filter-row">
-              <span class="filter-label">时长</span>
-              <div class="filter-options">
-                <el-tag v-for="t in courseDurations" :key="t" :effect="trainQuery.courseDuration === t ? 'dark' : 'plain'" class="filter-tag" @click="trainQuery.courseDuration = t">{{ t }}</el-tag>
-              </div>
-            </div>
-          </template>
-        </div>
-
-        <template v-if="myTrainingTab === 'plans'">
+        <template v-if="favoriteTab === 'plans'">
           <div class="card-grid">
-            <div v-for="(plan, idx) in filteredActivePlans" :key="plan.id" v-reveal class="module-card premium-card delay-0" :class="`delay-${idx % 5}`">
-               <div class="card-header-tags"><el-tag size="small" type="success" effect="dark" style="border:none">推进中</el-tag></div>
+            <div v-for="plan in favoritePlans" :key="plan.id" class="module-card premium-card">
+               <div class="card-header-tags"><el-tag size="small" type="warning" effect="dark" style="border:none">想练</el-tag></div>
                <h3 class="card-title">{{ plan.title }}</h3>
                <p class="card-desc">{{ (plan.description || '').slice(0, 80) }}...</p>
-               
-               <div class="plan-specs mt-2">
-                 <div class="spec-item"><el-icon><RefreshRight /></el-icon> {{ plan.frequency || '未设置' }}</div>
-               </div>
-               
                <div class="card-actions mt-3">
-                 <el-button size="small" type="primary" plain round @click="openAdjustFrequency(plan)">调整频次</el-button>
-                 <el-button size="small" type="danger" plain round @click="handleCancelPlan(plan.id)">退出计划</el-button>
+                 <el-button size="small" type="warning" plain round @click="unfavorite(plan, 'PLAN')">移出想练</el-button>
                </div>
             </div>
-            <el-empty v-if="filteredActivePlans.length === 0" description="暂无匹配的训练计划" />
+            <el-empty v-if="favoritePlans.length === 0" description="暂无添加到想练的计划" />
           </div>
         </template>
 
-        <template v-else-if="myTrainingTab === 'courses'">
+        <template v-else>
           <div class="card-grid">
-            <div v-for="(course, idx) in filteredManagedCourses" :key="course.id" v-reveal class="module-card premium-card delay-0" :class="`delay-${idx % 5}`">
-               <div class="card-header-tags"><el-tag size="small" type="primary" effect="dark" style="border:none">单次课</el-tag></div>
+            <div v-for="course in favoriteCourses" :key="course.id" class="module-card premium-card">
+               <div class="card-header-tags"><el-tag size="small" type="primary" effect="dark" style="border:none">单次课收藏</el-tag></div>
                <h3 class="card-title">{{ course.title }}</h3>
                <p class="card-desc">{{ (course.description || '').slice(0, 80) }}...</p>
-               <div class="plan-specs mt-2">
-                  <div class="spec-item"><el-icon><Timer /></el-icon> {{ course.durationMinutes }} 分钟</div>
-                  <div class="spec-item" v-if="courseSchedulesByCourseId[course.id]?.length">
-                    <el-icon><Calendar /></el-icon> 已安排 {{ courseSchedulesByCourseId[course.id].length }} 次
-                  </div>
-               </div>
                <div class="card-actions mt-3">
-                 <el-button size="small" type="primary" plain round @click="openCourseArrange(course)">训练安排</el-button>
-                 <el-button size="small" type="danger" text @click="handleRemoveCourse(course.id)">移除</el-button>
+                 <el-button size="small" type="warning" plain round @click="unfavorite(course, 'COURSE')">移出收藏</el-button>
                </div>
             </div>
-            <el-empty v-if="filteredManagedCourses.length === 0" description="暂无匹配的单次课程" />
+            <el-empty v-if="favoriteCourses.length === 0" description="暂无收藏的单次课程" />
           </div>
         </template>
       </template>
@@ -904,7 +830,7 @@ const saveMyPlan = async () => {
     })
     ElMessage.success('已保存')
     planEditorVisible.value = false
-    await fetchAllMyPlans()
+    await refreshTrainingSchedulesAndOverview()
   } catch (e) {}
 }
 
@@ -924,7 +850,7 @@ const saveMyCourse = async () => {
     })
     ElMessage.success('已保存')
     courseEditorVisible.value = false
-    await fetchMyCourses()
+    await refreshTrainingSchedulesAndOverview()
   } catch (e) {}
 }
 
@@ -1223,32 +1149,6 @@ const initTrendChart = () => {
   })
 }
 
-watch(
-  () => route.query.tab,
-  async (tab) => {
-    if (tab === 'overview') {
-      await fetchTrainingDashboardOverview()
-      return
-    }
-    if (tab === 'calendar') {
-      await fetchMonthSchedules(selectedDate.value)
-      return
-    }
-    if (tab === 'plans') {
-      await fetchAllMyPlans()
-      await fetchMyCourses()
-      await fetchCourseSchedules()
-      return
-    }
-    if (tab === 'favorites') {
-      await fetchFavorites()
-      return
-    }
-    await fetchMonthSchedules(selectedDate.value)
-  },
-  { immediate: true }
-)
-
 watch(myTrainingTab, async (val) => {
   if (activeMenu.value === 'plans' && val === 'courses') {
     await fetchCourseSchedules()
@@ -1425,6 +1325,32 @@ const fetchCourseSchedules = async () => {
     loading.value = false
   }
 }
+
+watch(
+  () => route.query.tab,
+  async (tab) => {
+    if (tab === 'overview') {
+      await fetchTrainingDashboardOverview()
+      return
+    }
+    if (tab === 'calendar') {
+      await fetchMonthSchedules(selectedDate.value)
+      return
+    }
+    if (tab === 'plans') {
+      await fetchAllMyPlans()
+      await fetchMyCourses()
+      await fetchCourseSchedules()
+      return
+    }
+    if (tab === 'favorites') {
+      await fetchFavorites()
+      return
+    }
+    await fetchMonthSchedules(selectedDate.value)
+  },
+  { immediate: true }
+)
 
 const disabledPostponeDate = (time: Date) => {
   return time.getTime() < postponeMinTime.value
@@ -1736,17 +1662,50 @@ watch(selectedDate, async (newVal, oldVal) => {
   }
 })
 
-onMounted(async () => {
+const loadTrainingRouteData = async () => {
+  if (!route.path.includes('/app/training')) return
+  const tab = (route.query.tab as string) || 'overview'
+  // 总是先刷新基础数据
   await fetchAllMyPlans()
   await fetchMyCourses()
   
-  // process start query param if exists post fetch
-  if (route.query.start) {
-     const courseToStart = myCourses.value.find(c => String(c.id) === String(route.query.start))
-     if (courseToStart) {
-       openImmersiveTraining(courseToStart, 'COURSE')
-       router.replace({ query: { tab: 'calendar' } })
-     }
+  if (tab === 'overview') {
+    await fetchTrainingDashboardOverview()
+  } else if (tab === 'calendar') {
+    await fetchMonthSchedules(selectedDate.value)
+  } else if (tab === 'plans') {
+    if (myTrainingTab.value === 'courses') {
+      await fetchCourseSchedules()
+    }
+  } else if (tab === 'favorites') {
+    await fetchFavorites()
+  }
+}
+
+const refreshTrainingSchedulesAndOverview = async () => {
+  await fetchAllMyPlans()
+  await fetchMyCourses()
+  await fetchMonthSchedules(selectedDate.value)
+  await fetchTrainingDashboardOverview()
+}
+
+watch(
+  () => [route.path, route.query.tab, myTrainingTab.value] as const,
+  async () => {
+    await loadTrainingRouteData()
+  },
+  { immediate: true }
+)
+
+onMounted(async () => {
+  if (!route.query.start) return
+  if (myCourses.value.length === 0) {
+    await fetchMyCourses()
+  }
+  const courseToStart = myCourses.value.find(c => String(c.id) === String(route.query.start))
+  if (courseToStart) {
+    openImmersiveTraining(courseToStart, 'COURSE')
+    router.replace({ query: { tab: 'calendar' } })
   }
 })
 

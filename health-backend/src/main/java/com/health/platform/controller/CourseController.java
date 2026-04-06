@@ -8,6 +8,7 @@ import com.health.platform.entity.Course;
 import com.health.platform.entity.TrainingRecord;
 import com.health.platform.mapper.CourseMapper;
 import com.health.platform.mapper.TrainingRecordMapper;
+import com.health.platform.service.ActivityProgressService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,9 @@ public class CourseController {
     @Autowired
     private TrainingRecordMapper recordMapper;
 
+    @Autowired
+    private ActivityProgressService activityProgressService;
+
     public static class ScheduleCourseReq {
         private Integer courseId;
         private List<String> dates;
@@ -41,7 +45,7 @@ public class CourseController {
 
     @Operation(summary = "Get public course library")
     @GetMapping("/library")
-    public Result<List<Course>> getLibrary(@RequestParam(required = false) String keyword) {
+    public Result<List<Course>> getLibrary(@RequestParam(value = "keyword", required = false) String keyword) {
         LambdaQueryWrapper<Course> wrapper = new LambdaQueryWrapper<Course>()
                 .eq(Course::getIsPublic, true)
                 .orderByDesc(Course::getCreateTime);
@@ -97,7 +101,7 @@ public class CourseController {
 
     @Operation(summary = "Subscribe to a course")
     @PostMapping("/subscribe/{id}")
-    public Result<Integer> subscribe(@PathVariable Integer id) {
+    public Result<Integer> subscribe(@PathVariable("id") Integer id) {
         Course original = courseMapper.selectById(id);
         if (original == null) {
             return Result.error("Course not found");
@@ -133,7 +137,7 @@ public class CourseController {
 
     @Operation(summary = "Unsubscribe or delete course")
     @DeleteMapping("/{id}")
-    public Result<Void> deleteCourse(@PathVariable Integer id) {
+    public Result<Void> deleteCourse(@PathVariable("id") Integer id) {
         Integer userId = StpUtil.getLoginIdAsInt();
         Course course = courseMapper.selectById(id);
         
@@ -163,7 +167,7 @@ public class CourseController {
 
     @Operation(summary = "Complete a course independent of a plan")
     @PostMapping("/{id}/complete")
-    public Result<Void> completeCourse(@PathVariable Integer id, @RequestBody RecordReq req) {
+    public Result<Void> completeCourse(@PathVariable("id") Integer id, @RequestBody RecordReq req) {
         Integer userId = StpUtil.getLoginIdAsInt();
         Course course = courseMapper.selectById(id);
         if (course == null) {
@@ -179,6 +183,7 @@ public class CourseController {
         record.setFeeling(req.getFeeling());
 
         recordMapper.insert(record);
+        activityProgressService.refreshChallengeParticipationsForUser(userId);
         return Result.success();
     }
 }

@@ -52,7 +52,7 @@ public class AdminController {
 
     @Operation(summary = "Deactivate user (soft delete)")
     @DeleteMapping("/user/{id}")
-    public Result<Void> deleteUser(@PathVariable Integer id) {
+    public Result<Void> deleteUser(@PathVariable("id") Integer id) {
         SysUser user = userMapper.selectById(id);
         if (user != null) {
             user.setStatus(2);
@@ -72,7 +72,7 @@ public class AdminController {
 
     @Operation(summary = "Delete community post")
     @DeleteMapping("/post/{id}")
-    public Result<Void> deletePost(@PathVariable Integer id) {
+    public Result<Void> deletePost(@PathVariable("id") Integer id) {
         postMapper.deleteById(id);
         return Result.success();
     }
@@ -99,7 +99,7 @@ public class AdminController {
 
     @Operation(summary = "Offline library plan")
     @DeleteMapping("/plan/{id}")
-    public Result<Void> deleteLibraryPlan(@PathVariable Integer id) {
+    public Result<Void> deleteLibraryPlan(@PathVariable("id") Integer id) {
         TrainingPlan p = trainingMapper.selectById(id);
         if (p != null) { p.setIsPublic(false); trainingMapper.updateById(p); }
         return Result.success();
@@ -126,7 +126,7 @@ public class AdminController {
 
     @Operation(summary = "Offline library course")
     @DeleteMapping("/course/{id}")
-    public Result<Void> deleteLibraryCourse(@PathVariable Integer id) {
+    public Result<Void> deleteLibraryCourse(@PathVariable("id") Integer id) {
         Course c = courseMapper.selectById(id);
         if (c != null) { c.setIsPublic(false); courseMapper.updateById(c); }
         return Result.success();
@@ -145,7 +145,7 @@ public class AdminController {
 
     @Operation(summary = "Delete comment")
     @DeleteMapping("/comment/{id}")
-    public Result<Void> deleteComment(@PathVariable Integer id) {
+    public Result<Void> deleteComment(@PathVariable("id") Integer id) {
         commentMapper.deleteById(id);
         return Result.success();
     }

@@ -73,15 +73,25 @@ public class ScheduleServiceImpl implements ScheduleService {
                     // Resolve Course
                     Object courseIdObj = dayConfig.get("courseId");
                     if (courseIdObj != null) {
-                        Integer courseId = (Integer) courseIdObj;
-                        com.health.platform.entity.Course course = courseMapper.selectById(courseId);
-                        if (course != null) {
-                            schedule.setCourseId(courseId);
-                            schedule.setTitle(course.getTitle());
-                            schedule.setDescription(course.getDescription());
-                            schedule.setActions(course.getActionsJson());
+                        Integer courseId = null;
+                        if (courseIdObj instanceof Number) {
+                            courseId = ((Number) courseIdObj).intValue();
+                        } else if (courseIdObj instanceof String) {
+                            try { courseId = Integer.parseInt((String) courseIdObj); } catch(Exception ignored) {}
+                        }
+                        
+                        if (courseId != null) {
+                            com.health.platform.entity.Course course = courseMapper.selectById(courseId);
+                            if (course != null) {
+                                schedule.setCourseId(courseId);
+                                schedule.setTitle(course.getTitle());
+                                schedule.setDescription(course.getDescription());
+                                schedule.setActions(course.getActionsJson());
+                            } else {
+                                schedule.setTitle("未知课程训练");
+                            }
                         } else {
-                            schedule.setTitle("未知课程训练");
+                            schedule.setTitle((String) dayConfig.get("title"));
                         }
                     } else {
                         schedule.setTitle((String) dayConfig.get("title"));

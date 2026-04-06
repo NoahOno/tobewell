@@ -33,7 +33,7 @@
             <div class="header">
               <div class="header-left">
                 <h2>{{ activeTrainingTab === 'plans' ? '训练计划' : '单次课程' }}</h2>
-                <p>像动作库一样筛选与搜索，快速找到适合你的训练内容</p>
+
               </div>
               <div class="header-right">
                 <el-input
@@ -116,18 +116,19 @@
                 <el-empty description="没有找到匹配的训练计划" />
               </div>
               <div v-else class="exercise-grid">
-                <div v-for="plan in filteredPlans" :key="plan.id" class="ex-card premium-card" @click="openDetail(plan)">
-                  <div class="ex-image-placeholder">
+                <div v-for="plan in filteredPlans" :key="plan.id" class="ex-card premium-card">
+                  <div class="ex-image-placeholder" @click="openDetail(plan)">
                     <el-icon class="play-icon"><VideoCamera /></el-icon>
                     <div class="difficulty-badge" :class="plan.difficulty || '初级'">{{ plan.difficulty || '初级' }}</div>
                   </div>
                   <div class="ex-info">
-                    <h3 class="ex-name">{{ plan.title }}</h3>
-                    <div class="ex-tags">
+                    <h3 class="ex-name" @click="openDetail(plan)">{{ plan.title }}</h3>
+                    <div class="ex-tags" @click="openDetail(plan)">
                       <el-tag size="small" type="info">{{ plan.goal || '通用' }}</el-tag>
                       <el-tag size="small" type="info">{{ plan.scene || '居家' }}</el-tag>
                       <el-tag size="small" type="info">{{ plan.duration || '4周' }}</el-tag>
                     </div>
+
                   </div>
                 </div>
               </div>
@@ -138,17 +139,18 @@
                 <el-empty description="没有找到匹配的单次课程" />
               </div>
               <div v-else class="exercise-grid">
-                <div v-for="course in filteredCourses" :key="course.id" class="ex-card premium-card" @click="openCourseDetail(course)">
-                  <div class="ex-image-placeholder">
+                <div v-for="course in filteredCourses" :key="course.id" class="ex-card premium-card">
+                  <div class="ex-image-placeholder" @click="openCourseDetail(course)">
                     <el-icon class="play-icon"><VideoCamera /></el-icon>
                     <div class="difficulty-badge" :class="course.difficulty || '初级'">{{ course.difficulty || '初级' }}</div>
                   </div>
                   <div class="ex-info">
-                    <h3 class="ex-name">{{ course.title }}</h3>
-                    <div class="ex-tags">
+                    <h3 class="ex-name" @click="openCourseDetail(course)">{{ course.title }}</h3>
+                    <div class="ex-tags" @click="openCourseDetail(course)">
                       <el-tag size="small" type="info">{{ course.category || '训练' }}</el-tag>
                       <el-tag size="small" type="info">{{ (course.durationMinutes || 30) + '分钟' }}</el-tag>
                     </div>
+
                   </div>
                 </div>
               </div>
@@ -162,7 +164,6 @@
             <div class="header">
               <div class="header-left">
                 <h2>健康服务</h2>
-                <p>选择一个服务，直接进入对话</p>
               </div>
             </div>
             <div class="exercise-grid">
@@ -198,7 +199,7 @@
     <!-- Unified Training Detail Dialogue -->
     <el-dialog 
       v-model="showPlanDetail" 
-      width="1100px" 
+      width="1200px" 
       style="border-radius: 24px; overflow: hidden;"
       class="premium-resource-dialog" 
       align-center 
@@ -218,7 +219,7 @@
                 :disabled="detailedPlan.isCourse ? isCourseSubscribed(detailedPlan) : isSubscribed(detailedPlan)"
                 @click="detailedPlan.isCourse ? openCourseSchedule(detailedPlan) : openSubscribeConfig(detailedPlan)"
               >
-                {{ (detailedPlan.isCourse ? isCourseSubscribed(detailedPlan) : isSubscribed(detailedPlan)) ? '✓ 已安排' : (detailedPlan.isCourse ? '立即开始训练课程' : '立即加入计划') }}
+                {{ (detailedPlan.isCourse ? isCourseSubscribed(detailedPlan) : isSubscribed(detailedPlan)) ? '✓ 已安排' : '加入训练' }}
               </el-button>
               
               <el-button 
@@ -498,6 +499,24 @@ const isCollected = (item: any) => {
   return collectedPlanIds.value.includes(item.id)
 }
 
+const isCourseCollected = (course: any) => {
+  return collectedCourseIds.value.includes(course.id)
+}
+
+const toggleCollectCourse = async (course: any) => {
+  try {
+    if (isCourseCollected(course)) {
+      await request.delete(`/interaction/collect?targetId=${course.id}&targetType=COURSE`)
+      collectedCourseIds.value = collectedCourseIds.value.filter(id => id !== course.id)
+      ElMessage.success('已移出想练')
+    } else {
+      await request.post('/interaction/collect', { targetId: course.id, targetType: 'COURSE', targetTitle: course.title })
+      collectedCourseIds.value.push(course.id)
+      ElMessage.success('已加入想练清单')
+    }
+  } catch (e) {}
+}
+
 const toggleCollect = async (item: any) => {
   const isCourseType = item.isCourse || item.actionsJson
   const targetType = isCourseType ? 'COURSE' : 'PLAN'
@@ -660,7 +679,10 @@ const confirmSubscribe = async () => {
     ElMessage.success('已成功加入训练计划！')
     subscribeDialogVisible.value = false
     showPlanDetail.value = false
-    router.push('/app/training')
+    // 延迟跳转，确保后端数据已更新
+    setTimeout(() => {
+      router.push('/app/training')
+    }, 1000)
   } catch (e) {}
 }
 
@@ -720,7 +742,10 @@ const confirmCourseSchedule = async () => {
     ElMessage.success('已成功预约，在日历中查看！')
     courseScheduleDialogVisible.value = false
     showPlanDetail.value = false
-    router.push('/app/training')
+    // 延迟跳转，确保后端数据已更新
+    setTimeout(() => {
+      router.push('/app/training')
+    }, 1000)
   } catch (e) {} finally {
     schedulingCourse.value = false
   }
@@ -947,10 +972,13 @@ watch(() => route.query.tab, (newTab) => {
 .ex-info {
   padding: 16px;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .ex-name {
-  margin: 0 0 12px;
+  margin: 0;
   font-size: 16px;
   font-weight: 700;
   color: #1e293b;
@@ -960,6 +988,51 @@ watch(() => route.query.tab, (newTab) => {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.ex-card-actions {
+  margin-top: auto;
+  padding-top: 12px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ex-card-actions .el-button {
+  flex: 1;
+  min-width: 80px;
+  font-size: 12px;
+  height: 32px;
+  padding: 0 12px;
+}
+
+@media (max-width: 768px) {
+  .exercise-grid {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+  }
+  
+  .ex-card-actions {
+    flex-direction: column;
+  }
+  
+  .ex-card-actions .el-button {
+    width: 100%;
+    flex: none;
+  }
+  
+  .ex-name {
+    font-size: 14px;
+  }
+  
+  .ex-tags {
+    flex-wrap: wrap;
+  }
+  
+  .ex-tags .el-tag {
+    font-size: 10px;
+    padding: 2px 8px;
+  }
 }
 
 .empty-state {
@@ -1271,6 +1344,7 @@ watch(() => route.query.tab, (newTab) => {
   background: white;
   border-radius: 24px;
   overflow: hidden;
+  max-height: 90vh;
 }
 
 :deep(.premium-resource-dialog .el-dialog__header) {
@@ -1343,6 +1417,7 @@ watch(() => route.query.tab, (newTab) => {
   background: white;
   border-radius: 24px;
   overflow: hidden;
+  max-height: 90vh;
 }
 
 :deep(.premium-resource-dialog .el-dialog__header) {
@@ -1356,17 +1431,23 @@ watch(() => route.query.tab, (newTab) => {
 /* Integrated Actions inside TRV Left Side */
 .integrated-actions {
   display: flex;
-  gap: 16px;
-  margin-top: auto;
-  padding-top: 40px;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 50px;
+  box-sizing: border-box;
+  width: 100%;
 }
 
 .btn-main {
   flex: 1;
-  height: 52px !important;
-  font-weight: 800 !important;
-  font-size: 15px !important;
-  border-radius: 14px !important;
+  height: 44px !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  border-radius: 12px !important;
   background: #3b82f6 !important;
   border: none !important;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
@@ -1374,17 +1455,17 @@ watch(() => route.query.tab, (newTab) => {
 
 .btn-main:hover {
   background: #2563eb !important;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(59, 130, 246, 0.3) !important;
 }
 
 .btn-sec {
-  width: 52px !important;
-  height: 52px !important;
-  border-radius: 14px !important;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  background: rgba(255, 255, 255, 0.05) !important;
-  color: white !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  border: 1px solid #e2e8f0 !important;
+  background: white !important;
+  color: #64748b !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1392,8 +1473,9 @@ watch(() => route.query.tab, (newTab) => {
 }
 
 .btn-sec:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-color: rgba(255, 255, 255, 0.2) !important;
+  background: #f8fafc !important;
+  border-color: #3b82f6 !important;
+  color: #3b82f6 !important;
 }
 
 /* Responsive */

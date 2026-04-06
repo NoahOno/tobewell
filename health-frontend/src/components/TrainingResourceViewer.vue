@@ -99,80 +99,98 @@
           <!-- ═══ COURSE CONTENT (TIMELINE) ═══ -->
           <template v-else-if="type === 'course'">
             <div class="timeline-container">
-              <!-- Phase Label: Start -->
-              <div class="timeline-node phase-node">
-                <div class="node-marker dot-only"></div>
-                <div class="node-content">
-                  <span class="phase-label">训练开始</span>
-                </div>
-              </div>
-
-              <template v-for="(act, idx) in parsedActions" :key="idx">
-                <!-- Action Node with Card -->
-                <div class="timeline-node item-node">
-                  <div class="node-line"></div>
-                  <div class="node-marker dot-only primary-dot"></div>
+              <template v-if="parsedActions.length > 0">
+                <!-- Phase Label: Start -->
+                <div class="timeline-node phase-node">
+                  <div class="node-marker dot-only"></div>
                   <div class="node-content">
-                    <div class="node-card">
-                       <div class="nc-thumb">
-                          <img :src="`https://api.dicebear.com/7.x/shapes/svg?seed=${act.name}`" />
-                       </div>
-                       <div class="nc-info">
-                          <div class="nc-title">{{ act.name }}</div>
-                          <div class="nc-desc">{{ act.sets }}</div>
-                       </div>
-                    </div>
+                    <span class="phase-label">训练开始</span>
                   </div>
                 </div>
 
-                <!-- Rest Node -->
-                <div class="timeline-node rest-node" v-if="act.rest">
-                  <div class="node-line"></div>
-                  <div class="node-marker dot-only warning-dot"></div>
+                <template v-for="(act, idx) in parsedActions" :key="idx">
+                  <!-- Action Node with Card -->
+                  <div class="timeline-node item-node">
+                    <div class="node-line"></div>
+                    <div class="node-marker dot-only primary-dot"></div>
+                    <div class="node-content">
+                      <div class="node-card">
+                         <div class="nc-thumb">
+                            <img :src="`https://api.dicebear.com/7.x/shapes/svg?seed=${act.name}`" />
+                         </div>
+                         <div class="nc-info">
+                            <div class="nc-title">{{ act.name }}</div>
+                            <div class="nc-desc">{{ act.sets }}</div>
+                         </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Rest Node -->
+                  <div class="timeline-node rest-node" v-if="act.rest">
+                    <div class="node-line"></div>
+                    <div class="node-marker dot-only warning-dot"></div>
+                    <div class="node-content">
+                      <div class="rest-label">休息 {{ act.rest }}</div>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- Phase Label: End -->
+                <div class="timeline-node phase-node">
+                  <div class="node-marker dot-only"></div>
                   <div class="node-content">
-                    <div class="rest-label">休息 {{ act.rest }}</div>
+                    <span class="phase-label">训练结束</span>
                   </div>
                 </div>
               </template>
-
-              <!-- Phase Label: End -->
-              <div class="timeline-node phase-node">
-                <div class="node-marker dot-only"></div>
-                <div class="node-content">
-                  <span class="phase-label">训练结束</span>
+              <template v-else>
+                <div class="no-content">
+                  <el-icon class="no-content-icon"><Timer /></el-icon>
+                  <h3 class="no-content-title">课程详情</h3>
+                  <p class="no-content-desc">该课程的详细内容正在准备中，加入训练后即可查看完整的训练安排。</p>
                 </div>
-              </div>
+              </template>
             </div>
           </template>
 
           <!-- ═══ PLAN CONTENT (TIMELINE) ═══ -->
           <template v-else-if="type === 'plan'">
             <div class="timeline-container plan-timeline">
-              <template v-for="(day, idx) in parsedDays" :key="idx">
-                <!-- Week Label (Every 7 days) -->
-                <div class="timeline-node phase-node" v-if="idx === 0 || idx % 7 === 0">
-                  <div class="node-marker dot-only week-dot"></div>
-                  <div class="node-content">
-                    <span class="phase-label">第 {{ Math.floor(idx / 7) + 1 }} 周</span>
-                  </div>
-                </div>
-
-                <!-- Day Node with Card -->
-                <div class="timeline-node item-node">
-                  <div class="node-line"></div>
-                  <div class="node-marker dot-only" :class="day.type === '休息' ? 'rest-dot' : 'plan-dot'"></div>
-                  <div class="node-content">
-                    <div class="node-card" :class="{ 'is-rest': day.type === '休息' }">
-                       <div class="nc-thumb">
-                          <span v-if="day.type === '休息'" class="rest-emoji">🛌</span>
-                          <img v-else :src="`https://api.dicebear.com/7.x/shapes/svg?seed=${day.courseTitle || 'T'}`" />
-                       </div>
-                       <div class="nc-info">
-                          <div class="nc-title">Day {{ Number(idx)+1 }} · {{ day.type === '休息' ? '休息日' : (day.courseTitle || '训练日') }}</div>
-                          <div class="nc-desc">{{ day.type === '休息' ? '身体机能恢复' : '执行本日训练指令' }}</div>
-                       </div>
+              <template v-if="parsedDays.length > 0">
+                <template v-for="(day, idx) in parsedDays" :key="idx">
+                  <!-- Week Label (Every 7 days) -->
+                  <div class="timeline-node phase-node" v-if="idx === 0 || idx % 7 === 0">
+                    <div class="node-marker dot-only week-dot"></div>
+                    <div class="node-content">
+                      <span class="phase-label">第 {{ Math.floor(idx / 7) + 1 }} 周</span>
                     </div>
                   </div>
+
+                  <!-- Day Node with Card -->
+                  <div class="timeline-node item-node">
+                    <div class="node-line"></div>
+                    <div class="node-marker dot-only" :class="day.type === '休息' ? 'rest-dot' : 'plan-dot'"></div>
+                    <div class="node-content">
+                      <div class="node-card" :class="{ 'is-rest': day.type === '休息' }">
+                         <div class="nc-thumb">
+                            <span v-if="day.type === '休息'" class="rest-emoji">🛌</span>
+                            <img v-else :src="`https://api.dicebear.com/7.x/shapes/svg?seed=${day.courseTitle || 'T'}`" />
+                         </div>
+                         <div class="nc-info">
+                            <div class="nc-title">Day {{ Number(idx)+1 }} · {{ day.type === '休息' ? '休息日' : (day.courseTitle || '训练日') }}</div>
+                            <div class="nc-desc">{{ day.type === '休息' ? '身体机能恢复' : '执行本日训练指令' }}</div>
+                         </div>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+              </template>
+              <template v-else>
+                <div class="no-content">
+                  <el-icon class="no-content-icon"><Timer /></el-icon>
+                  <h3 class="no-content-title">训练计划详情</h3>
+                  <p class="no-content-desc">该训练计划的详细内容正在准备中，加入训练后即可查看完整的训练安排。</p>
                 </div>
               </template>
             </div>
@@ -286,38 +304,54 @@ const parsedActions = computed<any[]>(() => {
 }
 
 .trv-hero-info {
-  padding: 32px;
+  padding: 24px 24px 32px 24px;
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow-y: hidden;
+  max-height: calc(100vh - 300px);
+  box-sizing: border-box;
 }
 
 .trv-title {
-  font-size: 30px;
-  font-weight: 900;
+  font-size: 24px;
+  font-weight: 800;
   color: #0f172a;
-  margin: 0 0 24px;
+  margin: 0 0 16px;
   line-height: 1.2;
 }
 
 .trv-main-stats {
   display: flex;
-  gap: 24px;
-  margin-bottom: 32px;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 }
-.trv-stat-box { display: flex; flex-direction: column; gap: 4px; }
-.stat-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
-.stat-val { font-size: 18px; font-weight: 800; color: #1e293b; }
+.trv-stat-box { display: flex; flex-direction: column; gap: 2px; }
+.stat-label { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
+.stat-val { font-size: 16px; font-weight: 700; color: #1e293b; }
 .stat-val.初级, .stat-val.Primary { color: #10b981; }
 .stat-val.中级, .stat-val.Intermediate { color: #f59e0b; }
 .stat-val.高级, .stat-val.Advanced { color: #ef4444; }
 
-.trv-basic-info-list { margin-bottom: 32px; }
-.info-item { margin-bottom: 20px; }
-.info-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 6px; }
-.info-val { font-size: 14px; color: #475569; line-height: 1.6; }
+.trv-basic-info-list { margin-bottom: 12px; }
+.info-item { margin-bottom: 12px; }
+.info-label { font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; }
+.info-val { font-size: 13px; color: #475569; line-height: 1.5; }
 
-.trv-actions-slot { margin-top: auto; }
+.trv-actions-slot {
+  margin-top: 8px;
+  padding: 12px 0;
+  border-top: 1px solid #e2e8f0;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 50px;
+  box-sizing: border-box;
+  margin-bottom: 8px;
+}
 
 /* RIGHT SIDE */
 .trv-main-content {
@@ -367,6 +401,40 @@ const parsedActions = computed<any[]>(() => {
 .error-list-light { background: #fff1f2; border-radius: 16px; padding: 20px; }
 .error-item { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #be123c; font-weight: 600; margin-bottom: 10px; }
 .err-dot { width: 6px; height: 6px; border-radius: 50%; background: #be123c; }
+
+/* No Content State */
+.no-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 40px;
+  background: #f8fafc;
+  border-radius: 16px;
+  margin: 20px 0;
+}
+
+.no-content-icon {
+  font-size: 48px;
+  color: #cbd5e1;
+  margin-bottom: 16px;
+}
+
+.no-content-title {
+  font-size: 18px;
+  font-weight: 800;
+  color: #1e293b;
+  margin-bottom: 8px;
+}
+
+.no-content-desc {
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.5;
+  max-width: 400px;
+}
 
 /* REFINED TIMELINE UI */
 .timeline-container {
@@ -447,8 +515,23 @@ const parsedActions = computed<any[]>(() => {
 .rest-label { color: #f59e0b; font-size: 13px; font-weight: 700; margin-top: 4px;}
 
 @media (max-width: 1024px) {
-  .trv-container { flex-direction: column; }
-  .trv-side-left { border-right: none; border-bottom: 1px solid #e2e8f0; flex: none; }
-  .trv-main-content { flex: none; height: 600px; }
+  .trv-container {
+    flex-direction: row;
+    min-width: 800px;
+  }
+  .trv-side-left {
+    flex: 1;
+    max-width: 400px;
+  }
+  .trv-main-content {
+    flex: 1.5;
+    min-width: 400px;
+  }
+  .trv-title {
+    font-size: 24px;
+  }
+  .content-scroll-area {
+    padding: 24px;
+  }
 }
 </style>

@@ -42,7 +42,7 @@ public class TrainingPlanController {
 
     @Operation(summary = "Adjust plan frequency")
     @PostMapping("/subscribe/{id}/frequency")
-    public Result<Void> adjustFrequency(@PathVariable Integer id, @RequestBody FrequencyReq req) {
+    public Result<Void> adjustFrequency(@PathVariable("id") Integer id, @RequestBody FrequencyReq req) {
         Integer userId = StpUtil.getLoginIdAsInt();
         TrainingPlan plan = trainingMapper.selectById(id);
         
@@ -101,6 +101,13 @@ public class TrainingPlanController {
     public Result<Void> save(@RequestBody TrainingPlan plan) {
         Integer userId = StpUtil.getLoginIdAsInt();
 
+        if (plan.getStartDate() == null) {
+            plan.setStartDate(LocalDate.now());
+        }
+        if (plan.getStatus() == null || plan.getStatus().isBlank()) {
+            plan.setStatus("ACTIVE");
+        }
+
         if (plan.getId() == null) {
             plan.setUserId(userId);
             if (!StpUtil.hasRole("ADMIN")) {
@@ -119,6 +126,16 @@ public class TrainingPlanController {
             }
             trainingMapper.updateById(plan);
         }
+
+        TrainingPlan fresh = trainingMapper.selectById(plan.getId());
+        if (fresh != null && fresh.getActions() != null && !fresh.getActions().isBlank()
+                && !Boolean.TRUE.equals(fresh.getIsPublic())) {
+            try {
+                scheduleService.generateSchedule(fresh, null);
+            } catch (Exception ignored) {
+                // invalid actions JSON is handled inside generateSchedule
+            }
+        }
         return Result.success();
     }
 
@@ -128,7 +145,7 @@ public class TrainingPlanController {
 
     @Operation(summary = "Delete a training plan permanently")
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Integer id) {
+    public Result<Void> delete(@PathVariable("id") Integer id) {
         Integer userId = StpUtil.getLoginIdAsInt();
         TrainingPlan plan = trainingMapper.selectById(id);
         
@@ -158,7 +175,7 @@ public class TrainingPlanController {
 
     @Operation(summary = "Soft unsubscribe from a plan")
     @PostMapping("/unsubscribe/{id}")
-    public Result<Void> unsubscribe(@PathVariable Integer id) {
+    public Result<Void> unsubscribe(@PathVariable("id") Integer id) {
         Integer userId = StpUtil.getLoginIdAsInt();
         TrainingPlan plan = trainingMapper.selectById(id);
         
@@ -176,7 +193,7 @@ public class TrainingPlanController {
 
     @Operation(summary = "Get public training plans (Health Library)")
     @GetMapping("/library")
-    public Result<List<TrainingPlan>> getLibrary(@RequestParam(required = false) String keyword, @RequestParam(required = false) String category) {
+    public Result<List<TrainingPlan>> getLibrary(@RequestParam(value = "keyword", required = false) String keyword, @RequestParam(value = "category", required = false) String category) {
         LambdaQueryWrapper<TrainingPlan> wrapper = new LambdaQueryWrapper<TrainingPlan>()
                 .eq(TrainingPlan::getIsPublic, true);
         
@@ -211,7 +228,7 @@ public class TrainingPlanController {
 
     @Operation(summary = "Subscribe to a plan")
     @PostMapping("/subscribe/{id}")
-    public Result<Void> subscribe(@PathVariable Integer id, @RequestBody(required = false) SubscribeReq req) {
+    public Result<Void> subscribe(@PathVariable("id") Integer id, @RequestBody(required = false) SubscribeReq req) {
         TrainingPlan original = trainingMapper.selectById(id);
         if (original == null) {
             return Result.error("Plan not found");

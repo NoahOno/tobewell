@@ -25,7 +25,7 @@ public class MetricController {
 
     @Operation(summary = "Get user's metrics by name")
     @GetMapping("/list")
-    public Result<List<HealthMetric>> getMetrics(@RequestParam String name) {
+    public Result<List<HealthMetric>> getMetrics(@RequestParam("name") String name) {
         Integer userId = StpUtil.getLoginIdAsInt();
         return Result.success(metricMapper.selectList(new LambdaQueryWrapper<HealthMetric>()
                 .eq(HealthMetric::getUserId, userId)

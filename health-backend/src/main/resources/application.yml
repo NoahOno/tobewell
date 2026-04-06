@@ -14,7 +14,8 @@ spring:
       enabled: true
   sql:
     init:
-      mode: always # Initialize schema on start
+      mode: always
+      encoding: UTF-8
 
 mybatis-plus:
   configuration:
@@ -27,7 +28,7 @@ sa-token:
   token-name: satoken
   timeout: 2592000
   active-timeout: -1
-  is-share: true
+  is-share: false
   token-style: uuid
   is-log: true
 

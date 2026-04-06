@@ -24,17 +24,32 @@ public class Activity {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime endTime;
 
-    // 'PLAN' or 'COURSE'
+    // 1: General Check-in, 2: Content Challenge, 3: Topic
+    private Integer activityType;
+
+    // 'PLAN' or 'COURSE' (Used for type 2)
     private String templateType;
     // training_plan.id or course.id
     private Integer templateId;
+
+    // Used for type 3
+    private String topicName;
+
+    // Type 1 check-in & type 2 challenge: COUNT (by times) or DAYS (by days / distinct days)
+    private String countMode;
+
+    // Topic activity stat mode: SHARED (binary), DAYS (share days), COUNT (share times)
+    private String topicStatMode;
+
+    // Rewards
+    private Integer rewardPoints;
 
     private Integer requiredDays;
 
     // 1 pinned, 0 normal
     private Integer pinned;
 
-    // ONLINE/OFFLINE
+    // DRAFT/ONLINE/OFFLINE
     private String status;
 
     private LocalDateTime createTime;

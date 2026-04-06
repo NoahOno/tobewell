@@ -14,6 +14,7 @@ public class CommunityPost {
     private Integer userId;
     private String title;
     private String content;
+    private String images; // comma-separated image URLs
     private String category;
     private String tags;
     private Integer likeCount;

@@ -254,4 +254,45 @@ onMounted(() => {
   font-weight: 700;
   box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
 }
+
+/* My Activities */
+.my-activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.my-activity-item {
+  padding: 16px 20px;
+  background: #F8FAFC;
+  border-radius: 14px;
+  border: 1px solid #F1F5F9;
+  transition: box-shadow 0.18s;
+}
+.my-activity-item:hover { box-shadow: 0 4px 16px rgba(59,130,246,0.08); }
+.my-act-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.my-act-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1E293B;
+  flex: 1;
+}
+.my-act-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 12px;
+  color: #94A3B8;
+  margin-bottom: 10px;
+}
+.my-act-progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #64748B;
+}
 </style>

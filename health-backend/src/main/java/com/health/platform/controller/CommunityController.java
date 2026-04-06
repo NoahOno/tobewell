@@ -7,18 +7,25 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.health.platform.common.Result;
 import com.health.platform.entity.*;
 import com.health.platform.mapper.*;
+import com.health.platform.service.ActivityProgressService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Tag(name = "Community")
 @RestController
 @RequestMapping("/community")
 @SaCheckLogin
 public class CommunityController {
+
+    private static final Pattern HASHTAG = Pattern.compile("#([^\\s#]+)");
 
     @Autowired
     private PostMapper postMapper;
@@ -37,13 +44,25 @@ public class CommunityController {
     
     @Autowired
     private CollectionMapper collectionMapper;
+    
+    @Autowired
+    private ActivityMapper activityMapper;
+    
+    @Autowired
+    private ActivityParticipationMapper participationMapper;
+    
+    @Autowired
+    private ActivityTaskMapper taskMapper;
+
+    @Autowired
+    private ActivityProgressService activityProgressService;
 
     // ─── Posts ───────────────────────────────────────────
 
     @Operation(summary = "Get all posts (feed)")
     @GetMapping("/posts")
     public Result<List<CommunityPost>> getPosts(
-            @RequestParam(defaultValue = "recommend") String tab
+            @RequestParam(value = "tab", defaultValue = "recommend") String tab
     ) {
         Integer userId = StpUtil.getLoginIdAsInt();
         LambdaQueryWrapper<CommunityPost> wrapper = new LambdaQueryWrapper<CommunityPost>()
@@ -104,7 +123,7 @@ public class CommunityController {
 
     @Operation(summary = "Search posts (unified search)")
     @GetMapping("/search")
-    public Result<List<CommunityPost>> search(@RequestParam String q) {
+    public Result<List<CommunityPost>> search(@RequestParam("q") String q) {
         LambdaQueryWrapper<CommunityPost> wrapper = new LambdaQueryWrapper<CommunityPost>()
                 .eq(CommunityPost::getStatus, "published")
                 .and(w -> w.like(CommunityPost::getTitle, q)
@@ -119,32 +138,74 @@ public class CommunityController {
 
     @Operation(summary = "Create a community post")
     @PostMapping("/post")
+    @org.springframework.transaction.annotation.Transactional
     public Result<Void> createPost(@RequestBody CommunityPost post) {
-        post.setUserId(StpUtil.getLoginIdAsInt());
+        Integer userId = StpUtil.getLoginIdAsInt();
+        post.setUserId(userId);
         post.setStatus("published");
         post.setLikeCount(0);
         post.setCommentCount(0);
         post.setViewCount(0);
+        post.setCreateTime(java.time.LocalDateTime.now());
+
+        Set<String> tagSet = new LinkedHashSet<>();
+        collectHashtags(post.getTitle(), tagSet);
+        collectHashtags(post.getContent(), tagSet);
+        if (!tagSet.isEmpty()) {
+            post.setTags(String.join(",", tagSet));
+        }
+
+        postMapper.insert(post);
+
+        // 更新话题类活动的参与状态（依赖 post.tags）
+        updateTopicActivityProgress(userId, post.getTags());
         
-        // Auto-extract hashtags: #tag1, #tag2
-        if (post.getContent() != null) {
-            java.util.regex.Matcher m = java.util.regex.Pattern.compile("#([^\\s#]+)").matcher(post.getContent());
-            java.util.StringJoiner tags = new java.util.StringJoiner(",");
-            while (m.find()) {
-                tags.add(m.group(1));
-            }
-            if (tags.length() > 0) {
-                post.setTags(tags.toString());
+        return Result.success();
+    }
+    
+    private static void collectHashtags(String text, Set<String> out) {
+        if (text == null || text.isEmpty()) return;
+        Matcher m = HASHTAG.matcher(text);
+        while (m.find()) {
+            String raw = m.group(1).trim();
+            if (!raw.isEmpty()) out.add(raw);
+        }
+    }
+
+    private void updateTopicActivityProgress(Integer userId, String tags) {
+        if (tags == null || tags.isEmpty()) {
+            return;
+        }
+
+        List<Activity> topicActivities = activityMapper.selectList(
+                new LambdaQueryWrapper<Activity>()
+                        .eq(Activity::getActivityType, 3)
+                        .eq(Activity::getStatus, "ONLINE"));
+
+        String[] tagArray = tags.split(",");
+        for (String rawTag : tagArray) {
+            String tag = rawTag.trim();
+            if (tag.isEmpty()) continue;
+
+            for (Activity activity : topicActivities) {
+                String tn = activity.getTopicName() != null ? activity.getTopicName().replace("#", "").trim() : "";
+                if (tn.isEmpty() || !tn.equalsIgnoreCase(tag)) {
+                    continue;
+                }
+                ActivityParticipation part = participationMapper.selectOne(
+                        new LambdaQueryWrapper<ActivityParticipation>()
+                                .eq(ActivityParticipation::getActivityId, activity.getId())
+                                .eq(ActivityParticipation::getUserId, userId));
+                if (part != null) {
+                    activityProgressService.syncParticipationStatus(part.getId());
+                }
             }
         }
-        
-        postMapper.insert(post);
-        return Result.success();
     }
 
     @Operation(summary = "Delete own post")
     @DeleteMapping("/post/{id}")
-    public Result<Void> deletePost(@PathVariable Integer id) {
+    public Result<Void> deletePost(@PathVariable("id") Integer id) {
         Integer userId = StpUtil.getLoginIdAsInt();
         postMapper.delete(new LambdaQueryWrapper<CommunityPost>()
                 .eq(CommunityPost::getId, id)
@@ -156,7 +217,7 @@ public class CommunityController {
 
     @Operation(summary = "Get comments for a post")
     @GetMapping("/post/{id}/comments")
-    public Result<List<HealthComment>> getComments(@PathVariable Integer id) {
+    public Result<List<HealthComment>> getComments(@PathVariable("id") Integer id) {
         List<HealthComment> list = commentMapper.selectList(new LambdaQueryWrapper<HealthComment>()
                 .eq(HealthComment::getTargetId, id)
                 .eq(HealthComment::getTargetType, "POST")
@@ -175,7 +236,7 @@ public class CommunityController {
 
     @Operation(summary = "Add a comment to a post")
     @PostMapping("/post/{id}/comment")
-    public Result<Void> addComment(@PathVariable Integer id, @RequestBody HealthComment comment) {
+    public Result<Void> addComment(@PathVariable("id") Integer id, @RequestBody HealthComment comment) {
         comment.setUserId(StpUtil.getLoginIdAsInt());
         comment.setTargetId(id);
         comment.setTargetType("POST");
@@ -193,7 +254,7 @@ public class CommunityController {
 
     @Operation(summary = "Like a post")
     @PostMapping("/post/{id}/like")
-    public Result<Void> like(@PathVariable Integer id) {
+    public Result<Void> like(@PathVariable("id") Integer id) {
         Integer userId = StpUtil.getLoginIdAsInt();
         HealthStar star = new HealthStar();
         star.setUserId(userId);
@@ -212,7 +273,7 @@ public class CommunityController {
 
     @Operation(summary = "Unlike a post")
     @DeleteMapping("/post/{id}/like")
-    public Result<Void> unlike(@PathVariable Integer id) {
+    public Result<Void> unlike(@PathVariable("id") Integer id) {
         Integer userId = StpUtil.getLoginIdAsInt();
         int deleted = starMapper.delete(new LambdaQueryWrapper<HealthStar>()
                 .eq(HealthStar::getUserId, userId)
@@ -233,7 +294,7 @@ public class CommunityController {
 
     @Operation(summary = "Follow a user")
     @PostMapping("/follow/{userId}")
-    public Result<Void> follow(@PathVariable Integer userId) {
+    public Result<Void> follow(@PathVariable("userId") Integer userId) {
         Integer currentUserId = StpUtil.getLoginIdAsInt();
         if (currentUserId.equals(userId)) {
             return Result.error("不能关注自己");
@@ -249,7 +310,7 @@ public class CommunityController {
 
     @Operation(summary = "Unfollow a user")
     @DeleteMapping("/follow/{userId}")
-    public Result<Void> unfollow(@PathVariable Integer userId) {
+    public Result<Void> unfollow(@PathVariable("userId") Integer userId) {
         userFollowMapper.delete(new LambdaQueryWrapper<UserFollow>()
                 .eq(UserFollow::getFollowerId, StpUtil.getLoginIdAsInt())
                 .eq(UserFollow::getFolloweeId, userId));
@@ -269,7 +330,7 @@ public class CommunityController {
 
     @Operation(summary = "Get basic user info and follow status")
     @GetMapping("/user/{id}")
-    public Result<java.util.Map<String, Object>> getUserInfo(@PathVariable Integer id) {
+    public Result<java.util.Map<String, Object>> getUserInfo(@PathVariable("id") Integer id) {
         SysUser user = userMapper.selectById(id);
         if (user == null) return Result.error("用户不存在");
         

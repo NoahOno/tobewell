@@ -20,6 +20,7 @@ import com.health.platform.mapper.ActivityTaskMapper;
 import com.health.platform.mapper.TrainingRecordMapper;
 import com.health.platform.mapper.TrainingMapper;
 import com.health.platform.mapper.UserMapper;
+import com.health.platform.service.ActivityProgressService;
 import com.health.platform.service.ScheduleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -63,6 +65,9 @@ public class DailyScheduleController {
     @Autowired
     private UserMapper userMapper;
 
+    @Autowired
+    private ActivityProgressService activityProgressService;
+
     @Operation(summary = "Get today's schedules")
     @GetMapping("/today")
     public Result<List<DailySchedule>> getTodaySchedules() {
@@ -77,7 +82,7 @@ public class DailyScheduleController {
     
     @Operation(summary = "Get schedules by date range")
     @GetMapping("/range")
-    public Result<List<DailySchedule>> getSchedulesInRange(@RequestParam String start, @RequestParam String end) {
+    public Result<List<DailySchedule>> getSchedulesInRange(@RequestParam("start") String start, @RequestParam("end") String end) {
         Integer userId = StpUtil.getLoginIdAsInt();
         LocalDate startDate = LocalDate.parse(start);
         LocalDate endDate = LocalDate.parse(end);
@@ -107,7 +112,7 @@ public class DailyScheduleController {
 
     @Operation(summary = "Complete a daily schedule and submit feedback")
     @PostMapping("/{id}/complete")
-    public Result<Void> completeSchedule(@PathVariable Integer id, @RequestBody CheckInReq req) {
+    public Result<Void> completeSchedule(@PathVariable("id") Integer id, @RequestBody CheckInReq req) {
         Integer userId = StpUtil.getLoginIdAsInt();
         DailySchedule schedule = scheduleMapper.selectById(id);
         
@@ -130,6 +135,9 @@ public class DailyScheduleController {
         record.setFeeling(req.getFeeling());
         record.setRecordTime(java.time.LocalDateTime.now());
         recordMapper.insert(record);
+        
+        // 更新挑战类活动的进度
+        updateChallengeActivityProgress(userId, schedule);
 
         // Activity integration: mark task completion and generate activity dynamic when all tasks finished.
         if ("COMPLETED".equals(schedule.getStatus())) {
@@ -182,7 +190,7 @@ public class DailyScheduleController {
 
     @Operation(summary = "Submit feedback for a completed schedule (no status change)")
     @PostMapping("/{id}/feedback")
-    public Result<Void> submitFeedback(@PathVariable Integer id, @RequestBody CheckInReq req) {
+    public Result<Void> submitFeedback(@PathVariable("id") Integer id, @RequestBody CheckInReq req) {
         Integer userId = StpUtil.getLoginIdAsInt();
         DailySchedule schedule = scheduleMapper.selectById(id);
 
@@ -240,7 +248,7 @@ public class DailyScheduleController {
 
     @Operation(summary = "Skip a daily schedule")
     @PostMapping("/{id}/skip")
-    public Result<Void> skipSchedule(@PathVariable Integer id) {
+    public Result<Void> skipSchedule(@PathVariable("id") Integer id) {
         Integer userId = StpUtil.getLoginIdAsInt();
         DailySchedule schedule = scheduleMapper.selectById(id);
         
@@ -259,7 +267,7 @@ public class DailyScheduleController {
 
     @Operation(summary = "Postpone a schedule to selected date")
     @PostMapping("/{id}/postpone")
-    public Result<Void> postponeSchedule(@PathVariable Integer id, @RequestBody PostponeReq req) {
+    public Result<Void> postponeSchedule(@PathVariable("id") Integer id, @RequestBody PostponeReq req) {
         Integer userId = StpUtil.getLoginIdAsInt();
         DailySchedule schedule = scheduleMapper.selectById(id);
         if (schedule == null || !userId.equals(schedule.getUserId())) {
@@ -306,7 +314,7 @@ public class DailyScheduleController {
 
     @Operation(summary = "Pause upcoming schedules")
     @PostMapping("/{id}/pause")
-    public Result<Void> pauseUpcomingSchedules(@PathVariable Integer id) {
+    public Result<Void> pauseUpcomingSchedules(@PathVariable("id") Integer id) {
         Integer userId = StpUtil.getLoginIdAsInt();
         DailySchedule schedule = scheduleMapper.selectById(id);
         if (schedule == null || !userId.equals(schedule.getUserId())) {
@@ -338,7 +346,7 @@ public class DailyScheduleController {
 
     @Operation(summary = "Resume paused schedules")
     @PostMapping("/{id}/resume")
-    public Result<Void> resumePausedSchedules(@PathVariable Integer id) {
+    public Result<Void> resumePausedSchedules(@PathVariable("id") Integer id) {
         Integer userId = StpUtil.getLoginIdAsInt();
         DailySchedule schedule = scheduleMapper.selectById(id);
         if (schedule == null || !userId.equals(schedule.getUserId())) {
@@ -370,7 +378,7 @@ public class DailyScheduleController {
 
     @Operation(summary = "Reset plan progress and regenerate schedules")
     @PostMapping("/{id}/reset")
-    public Result<Void> resetPlanProgress(@PathVariable Integer id) {
+    public Result<Void> resetPlanProgress(@PathVariable("id") Integer id) {
         Integer userId = StpUtil.getLoginIdAsInt();
         DailySchedule schedule = scheduleMapper.selectById(id);
         if (schedule == null || !userId.equals(schedule.getUserId())) {
@@ -463,7 +471,7 @@ public class DailyScheduleController {
 
     @Operation(summary = "Cancel one scheduled training item")
     @DeleteMapping("/{id}")
-    public Result<Void> cancelScheduledItem(@PathVariable Integer id) {
+    public Result<Void> cancelScheduledItem(@PathVariable("id") Integer id) {
         Integer userId = StpUtil.getLoginIdAsInt();
         DailySchedule schedule = scheduleMapper.selectById(id);
         if (schedule == null || !userId.equals(schedule.getUserId())) {
@@ -474,5 +482,46 @@ public class DailyScheduleController {
         }
         scheduleMapper.deleteById(id);
         return Result.success();
+    }
+    
+    private void updateChallengeActivityProgress(Integer userId, DailySchedule schedule) {
+        if (schedule == null) return;
+        
+        // 查找正在进行的挑战类活动
+        List<Activity> activities = activityMapper.selectList(
+                new LambdaQueryWrapper<Activity>()
+                        .eq(Activity::getActivityType, 2)
+                        .eq(Activity::getStatus, "ONLINE"));
+        
+        for (Activity activity : activities) {
+            // 检查活动关联的模板类型和模板ID是否匹配
+            boolean match = false;
+            if ("PLAN".equals(activity.getTemplateType()) && schedule.getPlanId() != null
+                    && activity.getTemplateId() != null) {
+                if (schedule.getPlanId().equals(activity.getTemplateId())) {
+                    match = true;
+                } else {
+                    TrainingPlan schedPlan = trainingMapper.selectById(schedule.getPlanId());
+                    if (schedPlan != null && activity.getTemplateId().equals(schedPlan.getSourceId())) {
+                        match = true;
+                    }
+                }
+            } else if ("COURSE".equals(activity.getTemplateType()) && schedule.getCourseId() != null
+                    && schedule.getCourseId().equals(activity.getTemplateId())) {
+                match = true;
+            }
+            
+            if (match) {
+                // 检查用户是否参与了该活动
+                ActivityParticipation part = participationMapper.selectOne(
+                        new LambdaQueryWrapper<ActivityParticipation>()
+                                .eq(ActivityParticipation::getActivityId, activity.getId())
+                                .eq(ActivityParticipation::getUserId, userId));
+                
+                if (part != null) {
+                    activityProgressService.syncParticipationStatus(part.getId());
+                }
+            }
+        }
     }
 }

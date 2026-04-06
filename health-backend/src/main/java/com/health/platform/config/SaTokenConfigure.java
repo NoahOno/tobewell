@@ -15,7 +15,7 @@ public class SaTokenConfigure implements WebMvcConfigurer {
         registry.addInterceptor(new SaInterceptor(handle -> {
             // Check login for all routes except those below
             SaRouter.match("/**")
-                .notMatch("/auth/login", "/auth/register", "/swagger-ui/**", "/v3/api-docs/**", "/")
+                .notMatch("/auth/login", "/auth/register", "/swagger-ui/**", "/v3/api-docs/**", "/", "/uploads/**")
                 .check(r -> StpUtil.checkLogin());
         })).addPathPatterns("/**");
     }

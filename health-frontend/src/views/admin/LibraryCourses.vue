@@ -57,54 +57,71 @@
     </div>
 
     <!-- Edit/Add Drawer -->
-    <el-drawer v-model="drawerVisible" :title="formCourse.id ? '编辑课程' : '新增精选课'" size="600px" destroy-on-close>
+    <el-drawer v-model="drawerVisible" :title="formCourse.id ? '编辑课程' : '新增精选课'" size="850px" destroy-on-close>
        <div style="padding: 24px;">
          <el-form :model="formCourse" label-position="top">
-           
-           <el-form-item label="课程标题"><el-input v-model="formCourse.title" /></el-form-item>
-           
-           <el-form-item label="课程封面 (图片上传)">
-              <el-upload
-                class="premium-uploader banner-uploader"
-                action="/api/file/upload"
-                :headers="uploadHeaders"
-                :show-file-list="false"
-                :on-success="handleUploadSuccess"
-              >
-                <img v-if="formCourse.coverImage" :src="formCourse.coverImage" class="uploader-preview" />
-                <div v-else class="uploader-placeholder">
-                  <el-icon class="uploader-icon"><Plus /></el-icon>
-                  <span>上传封面图</span>
-                </div>
-              </el-upload>
-           </el-form-item>
+           <el-row :gutter="32">
+             <!-- 左侧基础信息 -->
+             <el-col :span="10">
+               <el-form-item label="课程封面 (图片上传)">
+                  <el-upload
+                    class="premium-uploader banner-uploader"
+                    style="height: 200px;"
+                    action="/api/file/upload"
+                    :headers="uploadHeaders"
+                    :show-file-list="false"
+                    :on-success="handleUploadSuccess"
+                  >
+                    <img v-if="formCourse.coverImage" :src="formCourse.coverImage" class="uploader-preview" />
+                    <div v-else class="uploader-placeholder">
+                      <el-icon class="uploader-icon"><Plus /></el-icon>
+                      <span>上传封面图</span>
+                    </div>
+                  </el-upload>
+               </el-form-item>
+               <el-form-item label="课程标题"><el-input v-model="formCourse.title" placeholder="填写课程名称" /></el-form-item>
+               <el-form-item label="分类"><el-input v-model="formCourse.category" placeholder="如: 增肌、减脂" /></el-form-item>
+               <el-form-item label="适合人群"><el-input v-model="formCourse.audience" placeholder="如: 新手、进阶" /></el-form-item>
+             </el-col>
 
-           <el-row :gutter="16">
-             <el-col :span="8"><el-form-item label="分类"><el-input v-model="formCourse.category" /></el-form-item></el-col>
-             <el-col :span="8"><el-form-item label="适合人群"><el-input v-model="formCourse.audience" /></el-form-item></el-col>
-             <el-col :span="8"><el-form-item label="时长 (分钟)"><el-input-number v-model="formCourse.durationMinutes" style="width: 100%" /></el-form-item></el-col>
+             <!-- 右侧核心训练信息 -->
+             <el-col :span="14">
+               <el-row :gutter="16">
+                 <el-col :span="12">
+                   <el-form-item label="时长 (分钟)">
+                     <el-input-number v-model="formCourse.durationMinutes" style="width: 100%" />
+                   </el-form-item>
+                 </el-col>
+                 <el-col :span="12">
+                   <el-form-item label="难度">
+                      <el-radio-group v-model="formCourse.difficulty">
+                        <el-radio-button label="初级"/><el-radio-button label="中级"/><el-radio-button label="高级"/>
+                      </el-radio-group>
+                   </el-form-item>
+                 </el-col>
+               </el-row>
+               
+               <el-divider>动作轨迹编排</el-divider>
+               <el-button type="primary" size="small" plain @click="openExerciseSelector" style="margin-bottom: 12px;">插入动作</el-button>
+               <div class="course-actions-list" style="max-height: 400px; overflow-y: auto; padding-right: 8px;">
+                  <div v-for="(act, idx) in formCourse.parsedActions" :key="idx" class="action-strip">
+                     <span class="idx">{{ Number(idx) + 1 }}</span>
+                     <span class="name">{{ act.name }}</span>
+                     <el-input v-model="act.sets" size="small" placeholder="组/次" style="width: 80px" />
+                     <el-button type="danger" size="small" link @click="formCourse.parsedActions.splice(Number(idx), 1)">移除</el-button>
+                  </div>
+                  <div v-if="!formCourse.parsedActions || formCourse.parsedActions.length === 0" style="text-align: center; color: #94a3b8; font-size: 13px; padding: 24px 0;">
+                    暂无编排动作，请点击上方按钮插入
+                  </div>
+               </div>
+             </el-col>
            </el-row>
-           <el-form-item label="难度">
-              <el-radio-group v-model="formCourse.difficulty">
-                <el-radio-button label="初级"/><el-radio-button label="中级"/><el-radio-button label="高级"/>
-              </el-radio-group>
-           </el-form-item>
-           <el-divider>动作轨迹编排</el-divider>
-           <el-button type="primary" size="small" plain @click="openExerciseSelector">插入动作</el-button>
-           <div class="course-actions-list">
-              <div v-for="(act, idx) in formCourse.parsedActions" :key="idx" class="action-strip">
-                 <span class="idx">{{ Number(idx) + 1 }}</span>
-                 <span class="name">{{ act.name }}</span>
-                 <el-input v-model="act.sets" size="small" placeholder="组/次" style="width: 80px" />
-                 <el-button type="danger" size="small" link @click="formCourse.parsedActions.splice(Number(idx), 1)">移除</el-button>
-              </div>
-           </div>
          </el-form>
        </div>
        <template #footer>
           <div style="display:flex; justify-content: flex-end; padding:16px;">
             <el-button @click="drawerVisible = false">取消</el-button>
-            <el-button type="primary" @click="saveCourse">保存</el-button>
+            <el-button type="primary" @click="saveCourse">保存编排</el-button>
           </div>
        </template>
     </el-drawer>

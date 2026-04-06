@@ -13,6 +13,7 @@ public class Collection {
     private Integer id;
     private Integer userId;
     private Integer targetId;
-    private String targetType; // 'CONTENT' or 'PLAN'
+    private String targetType; // 'CONTENT', 'PLAN', 'POST', 'COURSE'
+    private String targetTitle;
     private LocalDateTime createTime;
 }

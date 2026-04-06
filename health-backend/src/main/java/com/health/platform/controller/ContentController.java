@@ -67,7 +67,7 @@ public class ContentController {
 
     @Operation(summary = "Delete content")
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Integer id) {
+    public Result<Void> delete(@PathVariable("id") Integer id) {
         HealthContent old = contentMapper.selectById(id);
         if (old == null) return Result.success();
 

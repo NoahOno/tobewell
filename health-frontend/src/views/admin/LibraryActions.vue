@@ -58,65 +58,102 @@
     </div>
 
     <!-- Edit/Add Drawer -->
-    <el-drawer v-model="drawerVisible" :title="formExercise.id ? '编辑动作档案' : '构建动作档案'" size="450px" destroy-on-close>
+    <el-drawer v-model="drawerVisible" :title="formExercise.id ? '编辑动作档案' : '构建动作档案'" size="850px" destroy-on-close>
        <div style="padding: 24px;">
          <el-form :model="formExercise" label-position="top">
-           
-           <el-form-item label="封面图 (图片上传)">
-              <el-upload
-                class="premium-uploader"
-                action="/api/file/upload"
-                :headers="uploadHeaders"
-                :show-file-list="false"
-                :on-success="handleCoverSuccess"
-              >
-                <img v-if="formExercise.coverImage" :src="formExercise.coverImage" class="uploader-preview" />
-                <el-icon v-else class="uploader-icon"><Plus /></el-icon>
-              </el-upload>
-           </el-form-item>
+           <el-row :gutter="32">
+             <!-- 左侧基础信息 (40%) -->
+             <el-col :span="10">
+               <el-form-item label="封面图 (图片上传)">
+                  <el-upload
+                    class="premium-uploader"
+                    style="width: 100%; height: 200px;"
+                    action="/api/file/upload"
+                    :headers="uploadHeaders"
+                    :show-file-list="false"
+                    :on-success="handleCoverSuccess"
+                  >
+                    <img v-if="formExercise.coverImage" :src="formExercise.coverImage" class="uploader-preview" />
+                    <div v-else class="uploader-placeholder">
+                      <el-icon class="uploader-icon"><Plus /></el-icon>
+                      <span>上传封面图</span>
+                    </div>
+                  </el-upload>
+               </el-form-item>
+               <el-form-item label="动作名称">
+                 <el-input v-model="formExercise.name" placeholder="填写动作名称" />
+               </el-form-item>
+               <el-form-item label="目标肌群">
+                 <el-input v-model="formExercise.muscle" placeholder="填写主要发力肌肉" />
+               </el-form-item>
+               <el-row :gutter="12">
+                 <el-col :span="12">
+                   <el-form-item label="训练类型">
+                     <el-input v-model="formExercise.type" placeholder="如: 力量" />
+                   </el-form-item>
+                 </el-col>
+                 <el-col :span="12">
+                   <el-form-item label="建议时长">
+                     <el-input v-model="formExercise.duration" placeholder="秒/分" />
+                   </el-form-item>
+                 </el-col>
+               </el-row>
+             </el-col>
 
-           <el-form-item label="动作名称"><el-input v-model="formExercise.name" /></el-form-item>
-           <el-row :gutter="16">
-             <el-col :span="12"><el-form-item label="目标肌群"><el-input v-model="formExercise.muscle" /></el-form-item></el-col>
-             <el-col :span="8"><el-form-item label="训练类型"><el-input v-model="formExercise.type" /></el-form-item></el-col>
-             <el-col :span="8"><el-form-item label="建议时长 (秒/分)"><el-input v-model="formExercise.duration" /></el-form-item></el-col>
-           </el-row>
-           <el-form-item label="动作说明"><el-input v-model="formExercise.instruction" type="textarea" :rows="3" /></el-form-item>
-           <el-row :gutter="16">
-             <el-col :span="12"><el-form-item label="所需器械"><el-input v-model="formExercise.equipment" /></el-form-item></el-col>
-             <el-col :span="12">
-               <el-form-item label="难度级别">
+             <!-- 右侧核心训练信息 (60%) -->
+             <el-col :span="14">
+               <el-form-item label="GIF动图 / 演示视频">
+                  <el-upload
+                    class="premium-uploader video-uploader"
+                    action="/api/file/upload"
+                    :headers="uploadHeaders"
+                    :show-file-list="false"
+                    :on-success="handleVideoSuccess"
+                  >
+                    <img v-if="formExercise.videoUrl" :src="formExercise.videoUrl" class="uploader-preview" />
+                    <div v-else class="uploader-placeholder">
+                      <el-icon class="uploader-icon"><Plus /></el-icon>
+                      <span>上传演示动图</span>
+                    </div>
+                  </el-upload>
+               </el-form-item>
+
+               <el-form-item label="难度级别" style="margin-bottom: 16px;">
                  <el-radio-group v-model="formExercise.difficulty">
-                   <el-radio-button label="初级"/><el-radio-button label="中级"/><el-radio-button label="高级"/>
+                   <el-radio-button label="初级" />
+                   <el-radio-button label="中级" />
+                   <el-radio-button label="高级" />
                  </el-radio-group>
+               </el-form-item>
+
+               <el-row :gutter="16">
+                 <el-col :span="12">
+                   <el-form-item label="所需器械">
+                     <el-input v-model="formExercise.equipment" placeholder="无器械则填无" />
+                   </el-form-item>
+                 </el-col>
+                 <el-col :span="12">
+                   <el-form-item label="建议设置 (组数/次数)">
+                     <el-input v-model="formExercise.recommendedSets" placeholder="例如: 3x12次/40秒" />
+                   </el-form-item>
+                 </el-col>
+               </el-row>
+
+               <el-form-item label="动作说明" style="margin-bottom: 16px;">
+                 <el-input v-model="formExercise.instruction" type="textarea" :rows="3" placeholder="填写动作的操作要领" />
+               </el-form-item>
+
+               <el-form-item label="常见错误与建议">
+                 <el-input v-model="formExercise.commonErrors" type="textarea" :rows="2" placeholder="填写容易产生的受力错误" />
                </el-form-item>
              </el-col>
            </el-row>
-           <el-form-item label="建议设置 (如：3x12次/40秒)"><el-input v-model="formExercise.recommendedSets" /></el-form-item>
-           <el-form-item label="常见错误建议指南 (逗号分隔)"><el-input v-model="formExercise.commonErrors" type="textarea" :rows="2" /></el-form-item>
-           
-           <el-form-item label="GIF动图演示 (动图上传)">
-              <el-upload
-                class="premium-uploader video-uploader"
-                action="/api/file/upload"
-                :headers="uploadHeaders"
-                :show-file-list="false"
-                :on-success="handleVideoSuccess"
-              >
-                <img v-if="formExercise.videoUrl" :src="formExercise.videoUrl" class="uploader-preview" />
-                <div v-else class="uploader-placeholder">
-                  <el-icon class="uploader-icon"><Plus /></el-icon>
-                  <span>上传 GIF</span>
-                </div>
-              </el-upload>
-           </el-form-item>
-
          </el-form>
        </div>
        <template #footer>
           <div style="display:flex; justify-content: flex-end; padding:16px;">
             <el-button @click="drawerVisible = false">取消</el-button>
-            <el-button type="primary" @click="saveExercise">保存</el-button>
+            <el-button type="primary" @click="saveExercise">保存编排</el-button>
           </div>
        </template>
     </el-drawer>

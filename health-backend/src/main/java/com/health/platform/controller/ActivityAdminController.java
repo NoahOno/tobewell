@@ -8,7 +8,8 @@ import com.health.platform.entity.Activity;
 import com.health.platform.entity.ActivityParticipation;
 import com.health.platform.entity.ActivityTask;
 import com.health.platform.entity.ActivityDynamic;
-import com.health.platform.entity.DailySchedule;
+import com.health.platform.entity.TrainingPlan;
+import com.health.platform.entity.Course;
 import com.health.platform.mapper.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -41,6 +42,49 @@ public class ActivityAdminController {
     @Autowired
     private ActivityDynamicMapper dynamicMapper;
 
+    @Autowired
+    private TrainingMapper trainingMapper;
+
+    @Autowired
+    private CourseMapper courseMapper;
+
+    @Autowired
+    private DailyScheduleMapper dailyScheduleMapper;
+
+    @Operation(summary = "Get all training plans (for admin selection)")
+    @GetMapping("/training-plans")
+    public Result<List<Map<String, Object>>> getTrainingPlans() {
+        List<TrainingPlan> plans = trainingMapper.selectList(new LambdaQueryWrapper<TrainingPlan>()
+                .eq(TrainingPlan::getIsPublic, true)
+                .orderByDesc(TrainingPlan::getStartDate));
+        List<Map<String, Object>> result = plans.stream().map(p -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", p.getId());
+            map.put("title", p.getTitle());
+            map.put("description", p.getDescription());
+            map.put("category", p.getCategory());
+            return map;
+        }).collect(Collectors.toList());
+        return Result.success(result);
+    }
+
+    @Operation(summary = "Get all courses (for admin selection)")
+    @GetMapping("/courses")
+    public Result<List<Map<String, Object>>> getCourses() {
+        List<Course> courses = courseMapper.selectList(new LambdaQueryWrapper<Course>()
+                .eq(Course::getIsPublic, true)
+                .orderByDesc(Course::getCreateTime));
+        List<Map<String, Object>> result = courses.stream().map(c -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", c.getId());
+            map.put("title", c.getTitle());
+            map.put("description", c.getDescription());
+            map.put("category", c.getCategory());
+            return map;
+        }).collect(Collectors.toList());
+        return Result.success(result);
+    }
+
     @Operation(summary = "Get activities (admin)")
     @GetMapping
     public Result<List<Activity>> list() {
@@ -59,6 +103,9 @@ public class ActivityAdminController {
         if (activity.getStatus() == null) activity.setStatus("ONLINE");
         if (activity.getPinned() == null) activity.setPinned(0);
         if (activity.getRequiredDays() == null) activity.setRequiredDays(7);
+        if (activity.getActivityType() != null && activity.getActivityType() == 1 && activity.getCountMode() == null) {
+            activity.setCountMode("DAYS");
+        }
 
         if (activity.getId() == null) {
             activityMapper.insert(activity);
@@ -70,7 +117,7 @@ public class ActivityAdminController {
 
     @Operation(summary = "Offline an activity")
     @PostMapping("/{id}/offline")
-    public Result<Void> offline(@PathVariable Integer id) {
+    public Result<Void> offline(@PathVariable("id") Integer id) {
         Activity act = activityMapper.selectById(id);
         if (act == null) return Result.error("Activity not found");
         act.setStatus("OFFLINE");
@@ -87,7 +134,7 @@ public class ActivityAdminController {
 
     @Operation(summary = "Pin or unpin an activity")
     @PostMapping("/{id}/pin")
-    public Result<Void> pin(@PathVariable Integer id, @RequestBody PinReq req) {
+    public Result<Void> pin(@PathVariable("id") Integer id, @RequestBody PinReq req) {
         Activity act = activityMapper.selectById(id);
         if (act == null) return Result.error("Activity not found");
         int p = req != null && req.getPinned() != null ? req.getPinned() : 0;
@@ -98,13 +145,21 @@ public class ActivityAdminController {
 
     @Operation(summary = "Delete an activity")
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Integer id) {
+    public Result<Void> delete(@PathVariable("id") Integer id) {
         // Delete in dependency order: dynamics -> tasks -> participation -> activity
         List<ActivityParticipation> parts = participationMapper.selectList(new LambdaQueryWrapper<ActivityParticipation>()
                 .eq(ActivityParticipation::getActivityId, id));
         List<Integer> partIds = parts.stream().map(ActivityParticipation::getId).collect(Collectors.toList());
 
         if (!partIds.isEmpty()) {
+            List<ActivityTask> tasks = taskMapper.selectList(
+                    new LambdaQueryWrapper<ActivityTask>().in(ActivityTask::getParticipationId, partIds));
+            for (ActivityTask t : tasks) {
+                Integer sid = t.getDailyScheduleId();
+                if (sid != null && sid > 0) {
+                    dailyScheduleMapper.deleteById(sid);
+                }
+            }
             taskMapper.delete(new LambdaQueryWrapper<ActivityTask>().in(ActivityTask::getParticipationId, partIds));
         }
         dynamicMapper.delete(new LambdaQueryWrapper<ActivityDynamic>().eq(ActivityDynamic::getActivityId, id));
@@ -115,7 +170,7 @@ public class ActivityAdminController {
 
     @Operation(summary = "Get activity analytics (admin)")
     @GetMapping("/{id}/analytics")
-    public Result<Map<String, Object>> analytics(@PathVariable Integer id) {
+    public Result<Map<String, Object>> analytics(@PathVariable("id") Integer id) {
         List<ActivityParticipation> allParts = participationMapper.selectList(new LambdaQueryWrapper<ActivityParticipation>()
                 .eq(ActivityParticipation::getActivityId, id));
         long totalParticipants = allParts.size();

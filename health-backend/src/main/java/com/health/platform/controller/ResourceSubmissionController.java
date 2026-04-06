@@ -92,7 +92,7 @@ public class ResourceSubmissionController {
 
     @Operation(summary = "Get my submissions")
     @GetMapping("/my-submissions")
-    public Result<List<ResourceSubmission>> mySubmissions(@RequestParam(required = false) String status) {
+    public Result<List<ResourceSubmission>> mySubmissions(@RequestParam(value = "status", required = false) String status) {
         Integer userId = StpUtil.getLoginIdAsInt();
         LambdaQueryWrapper<ResourceSubmission> w = new LambdaQueryWrapper<ResourceSubmission>()
                 .eq(ResourceSubmission::getSubmitterId, userId)
@@ -104,7 +104,7 @@ public class ResourceSubmissionController {
     @Operation(summary = "Admin: list submissions")
     @SaCheckRole("ADMIN")
     @GetMapping("/admin/submissions")
-    public Result<List<ResourceSubmission>> list(@RequestParam(required = false) String status) {
+    public Result<List<ResourceSubmission>> list(@RequestParam(value = "status", required = false) String status) {
         LambdaQueryWrapper<ResourceSubmission> w = new LambdaQueryWrapper<ResourceSubmission>()
                 .orderByDesc(ResourceSubmission::getCreateTime);
         if (status != null && !status.isEmpty()) w.eq(ResourceSubmission::getStatus, status);
@@ -114,7 +114,7 @@ public class ResourceSubmissionController {
     @Operation(summary = "Admin: approve submission")
     @SaCheckRole("ADMIN")
     @PostMapping("/admin/submissions/{id}/approve")
-    public Result<Void> approve(@PathVariable Integer id) {
+    public Result<Void> approve(@PathVariable("id") Integer id) {
         Integer adminId = StpUtil.getLoginIdAsInt();
         ResourceSubmission sub = submissionMapper.selectById(id);
         if (sub == null) return Result.error("Submission not found");
@@ -144,7 +144,7 @@ public class ResourceSubmissionController {
     @Operation(summary = "Admin: reject submission")
     @SaCheckRole("ADMIN")
     @PostMapping("/admin/submissions/{id}/reject")
-    public Result<Void> reject(@PathVariable Integer id, @RequestBody(required = false) ReviewReq req) {
+    public Result<Void> reject(@PathVariable("id") Integer id, @RequestBody(required = false) ReviewReq req) {
         Integer adminId = StpUtil.getLoginIdAsInt();
         ResourceSubmission sub = submissionMapper.selectById(id);
         if (sub == null) return Result.error("Submission not found");

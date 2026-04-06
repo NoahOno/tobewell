@@ -3,14 +3,14 @@ import { ElMessage } from 'element-plus'
 
 const service = axios.create({
     baseURL: '/api',
-    timeout: 5000
+    timeout: 30000
 })
 
 // Request interceptor
 service.interceptors.request.use(
     config => {
         const token = localStorage.getItem('token')
-        if (token) {
+        if (token && token !== 'null' && token !== 'undefined') {
             config.headers['satoken'] = token
         }
         return config

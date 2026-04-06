@@ -9,7 +9,10 @@ import com.health.platform.mapper.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/interaction")
@@ -31,6 +34,9 @@ public class InteractionController {
     @Autowired
     private PostMapper postMapper;
 
+    @Autowired
+    private UserMapper userMapper;
+
     // --- Stars (Likes) ---
     @PostMapping("/star")
     public Result<Void> star(@RequestBody HealthStar star) {
@@ -49,7 +55,7 @@ public class InteractionController {
     }
 
     @DeleteMapping("/star")
-    public Result<Void> unstar(@RequestParam Integer targetId, @RequestParam String targetType) {
+    public Result<Void> unstar(@RequestParam("targetId") Integer targetId, @RequestParam("targetType") String targetType) {
         Integer userId = StpUtil.getLoginIdAsInt();
         int deleted = starMapper.delete(new LambdaQueryWrapper<HealthStar>()
                 .eq(HealthStar::getUserId, userId)
@@ -82,7 +88,7 @@ public class InteractionController {
     }
 
     @GetMapping("/comments")
-    public Result<List<HealthComment>> getComments(@RequestParam Integer targetId, @RequestParam String targetType) {
+    public Result<List<HealthComment>> getComments(@RequestParam("targetId") Integer targetId, @RequestParam("targetType") String targetType) {
         List<HealthComment> list = commentMapper.selectList(new LambdaQueryWrapper<HealthComment>()
                 .eq(HealthComment::getTargetId, targetId)
                 .eq(HealthComment::getTargetType, targetType)
@@ -95,6 +101,13 @@ public class InteractionController {
     public Result<Void> collect(@RequestBody Collection collection) {
         collection.setUserId(StpUtil.getLoginIdAsInt());
         try {
+            // Auto-fill title for POST type if not provided
+            if ("POST".equals(collection.getTargetType()) && collection.getTargetTitle() == null) {
+                CommunityPost post = postMapper.selectById(collection.getTargetId());
+                if (post != null) {
+                    collection.setTargetTitle(post.getTitle());
+                }
+            }
             collectionMapper.insert(collection);
             if ("POST".equals(collection.getTargetType())) {
                 CommunityPost post = postMapper.selectById(collection.getTargetId());
@@ -108,7 +121,7 @@ public class InteractionController {
     }
 
     @DeleteMapping("/collect")
-    public Result<Void> uncollect(@RequestParam Integer targetId, @RequestParam String targetType) {
+    public Result<Void> uncollect(@RequestParam("targetId") Integer targetId, @RequestParam("targetType") String targetType) {
         Integer userId = StpUtil.getLoginIdAsInt();
         int deleted = collectionMapper.delete(new LambdaQueryWrapper<Collection>()
                 .eq(Collection::getUserId, userId)
@@ -134,12 +147,38 @@ public class InteractionController {
     }
 
     @GetMapping("/collections")
-    public Result<List<Collection>> getCollections(@RequestParam String type) {
+    public Result<List<Map<String, Object>>> getCollections(@RequestParam("type") String type) {
         Integer userId = StpUtil.getLoginIdAsInt();
         List<Collection> list = collectionMapper.selectList(new LambdaQueryWrapper<Collection>()
                 .eq(Collection::getUserId, userId)
                 .eq(Collection::getTargetType, type)
                 .orderByDesc(Collection::getCreateTime));
-        return Result.success(list);
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Collection c : list) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", c.getId());
+            map.put("targetId", c.getTargetId());
+            map.put("targetType", c.getTargetType());
+            map.put("targetTitle", c.getTargetTitle());
+            map.put("createTime", c.getCreateTime());
+
+            if ("POST".equals(type)) {
+                CommunityPost post = postMapper.selectById(c.getTargetId());
+                if (post != null) {
+                    map.put("targetTitle", post.getTitle());
+                    map.put("content", (post.getContent() != null && post.getContent().length() > 100)
+                            ? post.getContent().substring(0, 100) + "..." : post.getContent());
+                    map.put("likeCount", post.getLikeCount());
+                    map.put("commentCount", post.getCommentCount());
+                    map.put("images", post.getImages());
+                    SysUser author = userMapper.selectById(post.getUserId());
+                    map.put("authorName", author != null ? author.getNickname() : "未知用户");
+                    map.put("postUserId", post.getUserId());
+                }
+            }
+            result.add(map);
+        }
+        return Result.success(result);
     }
 }
