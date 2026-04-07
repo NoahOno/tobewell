@@ -167,7 +167,7 @@
               </div>
             </div>
             <div class="exercise-grid">
-              <div v-for="svc in serviceCards" :key="svc.key" class="ex-card premium-card" @click="openServiceChat(svc)">
+              <div v-for="svc in serviceCardsData" :key="svc.key" class="ex-card premium-card" @click="openServiceChat(svc)">
                 <div class="ex-image-placeholder">
                   <el-icon class="play-icon"><MagicStick /></el-icon>
                   <div class="difficulty-badge">{{ svc.styleLabel }}</div>
@@ -372,6 +372,7 @@ const serviceCards = [
 ]
 
 const activeModuleKey = ref('training')
+const serviceCardsData = ref<any[]>([])
 const activeModule = computed(() => healthModules.find(m => m.key === activeModuleKey.value) || healthModules[0])
 
 const loading = ref(false)
@@ -461,12 +462,26 @@ const syncModuleWithRouteTab = (tab?: string) => {
   }
 }
 
+const fetchAiServices = async () => {
+  try {
+    const res: any = await request.get('/ai/services')
+    serviceCardsData.value = (res.data || []).map((item: any) => ({
+      key: item.serviceKey,
+      title: item.name,
+      description: item.description,
+      styleLabel: item.styleLabel,
+      tag: item.tagLabel
+    }))
+  } catch (error) {
+    serviceCardsData.value = []
+  }
+}
+
 const openServiceChat = (svc: any) => {
   router.push({
     path: '/app/explore/webai',
     query: {
-      preset: svc.presetKey,
-      style: svc.styleLabel
+      serviceKey: svc.key
     }
   })
 }
@@ -671,19 +686,33 @@ const openSubscribeConfig = (plan: any) => {
 
 const confirmSubscribe = async () => {
   try {
-    await request.post(`/training/subscribe/${targetSubscribePlan.value.id}`, {
-      startDate: subscribeForm.startDate,
+    // 将日期格式化为 YYYY-MM-DD 字符串
+    const startDateObj = new Date(subscribeForm.startDate)
+    const startDateStr = startDateObj.toISOString().split('T')[0]
+    
+    console.log('[Subscribe] Plan ID:', targetSubscribePlan.value.id)
+    console.log('[Subscribe] Start Date:', startDateStr)
+    console.log('[Subscribe] Weekly Days:', subscribeForm.weeklyDays)
+    
+    const response = await request.post(`/training/subscribe/${targetSubscribePlan.value.id}`, {
+      startDate: startDateStr,
       weeklyDays: subscribeForm.weeklyDays,
-      activate: true // The user wants to set it as active immediately and go to Training
+      activate: true
     })
+    
+    console.log('[Subscribe] Response:', response)
+    
     ElMessage.success('已成功加入训练计划！')
     subscribeDialogVisible.value = false
     showPlanDetail.value = false
     // 延迟跳转，确保后端数据已更新
     setTimeout(() => {
-      router.push('/app/training')
+      router.push({ path: '/app/training', query: { tab: 'plans' } })
     }, 1000)
-  } catch (e) {}
+  } catch (e) {
+    console.error('[Subscribe] Error:', e)
+    ElMessage.error('加入训练计划失败，请重试')
+  }
 }
 
 const openDetail = (plan: any) => {
@@ -778,6 +807,7 @@ onMounted(() => {
   fetchMyPlans()
   fetchMyCourses()
   fetchCollections()
+  fetchAiServices()
 })
 
 watch(() => route.query.tab, (newTab) => {

@@ -229,12 +229,22 @@ public class TrainingPlanController {
     @Operation(summary = "Subscribe to a plan")
     @PostMapping("/subscribe/{id}")
     public Result<Void> subscribe(@PathVariable("id") Integer id, @RequestBody(required = false) SubscribeReq req) {
+        System.out.println("[TrainingPlanController] Subscribe request - Plan ID: " + id);
+        System.out.println("[TrainingPlanController] Request body - startDate: " + (req != null ? req.getStartDate() : "null") + 
+                          ", weeklyDays: " + (req != null ? req.getWeeklyDays() : "null") + 
+                          ", activate: " + (req != null ? req.getActivate() : "null"));
+        
         TrainingPlan original = trainingMapper.selectById(id);
         if (original == null) {
+            System.err.println("[TrainingPlanController] Plan not found: " + id);
             return Result.error("Plan not found");
         }
         
+        System.out.println("[TrainingPlanController] Original plan - Title: " + original.getTitle() + 
+                          ", Actions: " + original.getActions());
+        
         Integer userId = StpUtil.getLoginIdAsInt();
+        System.out.println("[TrainingPlanController] User ID: " + userId);
         
         // Check if user already has an instance of this plan
         TrainingPlan existing = trainingMapper.selectOne(new LambdaQueryWrapper<TrainingPlan>()
@@ -243,6 +253,7 @@ public class TrainingPlanController {
                 .last("LIMIT 1"));
 
         if (existing != null) {
+            System.out.println("[TrainingPlanController] Updating existing plan instance: " + existing.getId());
             // Update existing instance
             existing.setIsSubscribed(true);
             if (req != null && Boolean.TRUE.equals(req.getActivate())) {
@@ -261,6 +272,7 @@ public class TrainingPlanController {
             return Result.success();
         }
 
+        System.out.println("[TrainingPlanController] Creating new plan clone");
         // Clone the plan if no existing instance
         TrainingPlan clone = new TrainingPlan();
         clone.setUserId(userId);
@@ -282,10 +294,15 @@ public class TrainingPlanController {
             clone.setStatus("PLANNING"); // Reset status
         }
         
+        System.out.println("[TrainingPlanController] Clone plan - StartDate: " + clone.getStartDate() + ", Status: " + clone.getStatus());
+        
         trainingMapper.insert(clone);
+        System.out.println("[TrainingPlanController] Inserted clone with ID: " + clone.getId());
         
         List<String> days = (req != null && req.getWeeklyDays() != null) ? req.getWeeklyDays() : null;
+        System.out.println("[TrainingPlanController] Generating schedule with weeklyDays: " + days);
         scheduleService.generateSchedule(clone, days);
+        System.out.println("[TrainingPlanController] Schedule generation completed");
 
         return Result.success();
     }

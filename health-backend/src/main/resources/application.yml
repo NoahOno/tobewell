@@ -41,3 +41,12 @@ springdoc:
 custom:
   upload-path: d:/Coding/graduationProj002/uploads/
   upload-url-prefix: http://localhost:8080/uploads/
+
+ai:
+  provider: openai-compatible
+  base-url: https://openrouter.ai/api/v1
+  chat-path: /chat/completions
+  api-key: ${AI_API_KEY:}
+  model: ${AI_MODEL:google/gemma-3-27b-it:free}
+  app-name: tbw-health-platform
+  site-url: http://localhost:3000

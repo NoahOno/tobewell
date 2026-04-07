@@ -1,21 +1,17 @@
 <template>
   <el-container class="admin-layout">
-    <el-aside width="260px" class="admin-sidebar" v-if="isAdmin">
+    <el-aside v-if="isAdmin" width="260px" class="admin-sidebar">
       <div class="sidebar-logo">
         <el-icon :size="28" color="var(--primary-color)"><TrendCharts /></el-icon>
         <span>管理后台</span>
       </div>
-      
-      <el-menu
-        :default-active="activePath"
-        router
-        class="admin-menu"
-      >
+
+      <el-menu :default-active="activePath" router class="admin-menu">
         <el-menu-item index="/admin/dashboard">
           <el-icon><TrendCharts /></el-icon>
           <span>看板</span>
         </el-menu-item>
-        
+
         <el-menu-item index="/admin/users">
           <el-icon><User /></el-icon>
           <span>全站用户管理</span>
@@ -38,11 +34,16 @@
           <el-menu-item index="/admin/content-library/actions">动作管理</el-menu-item>
           <el-menu-item index="/admin/content-library/courses">课程管理</el-menu-item>
           <el-menu-item index="/admin/content-library/plans">计划管理</el-menu-item>
-          <el-menu-item index="/admin/content-library/audit">训练共享审核</el-menu-item>
+          <el-menu-item index="/admin/content-library/audit">共享审核</el-menu-item>
         </el-sub-menu>
+
+        <el-menu-item index="/admin/health-services">
+          <el-icon><Monitor /></el-icon>
+          <span>健康服务管理</span>
+        </el-menu-item>
       </el-menu>
     </el-aside>
-    
+
     <el-container>
       <el-header class="admin-header">
         <div class="header-left">
@@ -56,8 +57,8 @@
             <div class="admin-user-info">
               <el-avatar :size="32" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
               <div class="admin-name">
-                 <span class="role-tag">系统管理员</span>
-                 <span class="name-text">{{ nickname }}</span>
+                <span class="role-tag">系统管理员</span>
+                <span class="name-text">{{ nickname }}</span>
               </div>
             </div>
             <template #dropdown>
@@ -68,16 +69,16 @@
           </el-dropdown>
         </div>
       </el-header>
-      
+
       <el-main class="admin-main">
         <div class="view-container">
           <router-view v-if="isAdmin" />
           <div v-else class="forbidden">
-             <el-result icon="error" title="访问受限" sub-title="您当前账号权限不足。">
-               <template #extra>
-                 <el-button type="primary" @click="router.push('/app')">回前台</el-button>
-               </template>
-             </el-result>
+            <el-result icon="error" title="访问受限" sub-title="当前账号没有管理员权限。">
+              <template #extra>
+                <el-button type="primary" @click="router.push('/app')">返回前台</el-button>
+              </template>
+            </el-result>
           </div>
         </div>
       </el-main>
@@ -86,55 +87,50 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { TrendCharts, User, MessageBox, Bicycle, ChatDotRound, Files } from '@element-plus/icons-vue'
+import { ChatDotRound, Files, Monitor, TrendCharts, User } from '@element-plus/icons-vue'
 import request from '../../api/request'
 
 const route = useRoute()
 const router = useRouter()
-const activePath = computed(() => route.path)
+
 const nickname = ref('')
 const isAdmin = ref(false)
 
+const activePath = computed(() => route.path)
+
 const currentTitle = computed(() => {
-  if (route.path.includes('dashboard')) return '数据看板'
-  if (route.path.includes('users')) return '用户管理'
-  if (route.path.includes('community')) {
-     if (route.path.includes('posts')) return '社区管理 / 帖子与评论'
-     if (route.path.includes('activities')) return '社区管理 / 活动管理'
-     return '社区管理'
-  }
-  if (route.path.includes('content-library')) {
-     if (route.path.includes('actions')) return '内容库 / 动作管理'
-     if (route.path.includes('courses')) return '内容库 / 课程管理'
-     if (route.path.includes('plans')) return '内容库 / 计划管理'
-     if (route.path.includes('audit')) return '内容库 / 共享审核'
-     return '内容库管理'
-  }
+  if (route.path.includes('/admin/dashboard')) return '数据看板'
+  if (route.path.includes('/admin/users')) return '用户管理'
+  if (route.path.includes('/admin/community/posts')) return '社区管理 / 帖子管理'
+  if (route.path.includes('/admin/community/activities')) return '社区管理 / 活动管理'
+  if (route.path.includes('/admin/content-library/actions')) return '内容库管理 / 动作管理'
+  if (route.path.includes('/admin/content-library/courses')) return '内容库管理 / 课程管理'
+  if (route.path.includes('/admin/content-library/plans')) return '内容库管理 / 计划管理'
+  if (route.path.includes('/admin/content-library/audit')) return '内容库管理 / 共享审核'
+  if (route.path.includes('/admin/health-services')) return '健康服务管理'
   return '管理后台'
 })
 
-const handleCommand = (cmd: string) => {
-  if (cmd === 'logout') {
-    request.post('/auth/logout').then(() => {
-      localStorage.removeItem('token')
-      router.push('/login')
-    })
-  }
+const handleCommand = async (command: string) => {
+  if (command !== 'logout') return
+  await request.post('/auth/logout')
+  localStorage.removeItem('token')
+  router.push('/login')
 }
 
 onMounted(async () => {
   try {
     const res: any = await request.get('/auth/info')
-    if (res.data.role !== 'ADMIN') {
+    if (res.data?.role !== 'ADMIN') {
       isAdmin.value = false
       router.push('/app')
       return
     }
-    nickname.value = res.data.nickname || res.data.username
+    nickname.value = res.data.nickname || res.data.username || 'Administrator'
     isAdmin.value = true
-  } catch (e) {
+  } catch (error) {
     router.push('/login')
   }
 })
@@ -144,12 +140,13 @@ onMounted(async () => {
 .admin-layout {
   height: 100vh;
   background-color: var(--bg-main);
-  background-image: radial-gradient(at 0% 0%, rgba(74, 222, 128, 0.05) 0px, transparent 50%),
-                    radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.05) 0px, transparent 50%);
+  background-image:
+    radial-gradient(at 0% 0%, rgba(74, 222, 128, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(59, 130, 246, 0.05) 0px, transparent 50%);
 }
 
 .admin-sidebar {
-  background: white;
+  background: #fff;
   border-right: 1px solid rgba(226, 232, 240, 0.8);
   padding: 24px;
 }
@@ -184,7 +181,7 @@ onMounted(async () => {
 
 .admin-header {
   height: 72px;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: rgba(255, 255, 255, 0.82);
   backdrop-filter: blur(12px);
   display: flex;
   justify-content: space-between;
@@ -198,7 +195,7 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   padding: 6px 16px;
-  border-radius: 100px;
+  border-radius: 999px;
   background: #f8fafc;
   cursor: pointer;
   transition: all 0.2s;

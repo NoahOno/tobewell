@@ -3,16 +3,19 @@ package com.health.platform.controller;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.health.platform.common.Result;
 import com.health.platform.entity.*;
 import com.health.platform.mapper.*;
 import com.health.platform.service.ActivityProgressService;
+import com.health.platform.service.ai.AiService;
+import com.health.platform.service.ai.CommunityReplyContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -26,6 +29,9 @@ import java.util.regex.Pattern;
 public class CommunityController {
 
     private static final Pattern HASHTAG = Pattern.compile("#([^\\s#]+)");
+    private static final String AI_TRIGGER = "@tbw";
+    private static final String AI_ASSISTANT_USERNAME = "tbw_ai_assistant";
+    private static final String AI_ASSISTANT_NICKNAME = "tbw 智能助手";
 
     @Autowired
     private PostMapper postMapper;
@@ -56,6 +62,9 @@ public class CommunityController {
 
     @Autowired
     private ActivityProgressService activityProgressService;
+
+    @Autowired
+    private AiService aiService;
 
     // ─── Posts ───────────────────────────────────────────
 
@@ -218,34 +227,43 @@ public class CommunityController {
     @Operation(summary = "Get comments for a post")
     @GetMapping("/post/{id}/comments")
     public Result<List<HealthComment>> getComments(@PathVariable("id") Integer id) {
-        List<HealthComment> list = commentMapper.selectList(new LambdaQueryWrapper<HealthComment>()
+        List<HealthComment> allComments = commentMapper.selectList(new LambdaQueryWrapper<HealthComment>()
                 .eq(HealthComment::getTargetId, id)
                 .eq(HealthComment::getTargetType, "POST")
                 .orderByDesc(HealthComment::getCreateTime));
-        
-        for (HealthComment c : list) {
-            SysUser user = userMapper.selectById(c.getUserId());
-            if (user != null) {
-                c.setNickname(user.getNickname());
-            } else {
-                c.setNickname("用户 #" + c.getUserId());
+
+        List<HealthComment> topLevel = new ArrayList<>();
+        for (HealthComment comment : allComments) {
+            fillCommentUser(comment);
+            if (comment.getParentId() == null || comment.getParentId() == 0) {
+                topLevel.add(comment);
             }
         }
-        return Result.success(list);
+        for (HealthComment parent : topLevel) {
+            for (HealthComment comment : allComments) {
+                if (parent.getId().equals(comment.getParentId())) {
+                    parent.getReplies().add(comment);
+                }
+            }
+        }
+        return Result.success(topLevel);
     }
 
     @Operation(summary = "Add a comment to a post")
     @PostMapping("/post/{id}/comment")
+    @org.springframework.transaction.annotation.Transactional
     public Result<Void> addComment(@PathVariable("id") Integer id, @RequestBody HealthComment comment) {
         comment.setUserId(StpUtil.getLoginIdAsInt());
         comment.setTargetId(id);
         comment.setTargetType("POST");
+        comment.setCreateTime(LocalDateTime.now());
+        if (comment.getParentId() == null) {
+            comment.setParentId(0);
+        }
         commentMapper.insert(comment);
-        // Increment comment count
-        CommunityPost post = postMapper.selectById(id);
-        if (post != null) {
-            post.setCommentCount(post.getCommentCount() + 1);
-            postMapper.updateById(post);
+        incrementPostCommentCount(id);
+        if (containsAiTrigger(comment.getContent())) {
+            createAssistantReply(id, comment);
         }
         return Result.success();
     }
@@ -348,5 +366,79 @@ public class CommunityController {
                 .eq(UserFollow::getFollowerId, id)));
         
         return Result.success(map);
+    }
+
+    private void fillCommentUser(HealthComment comment) {
+        SysUser user = userMapper.selectById(comment.getUserId());
+        if (user != null) {
+            comment.setNickname(user.getNickname());
+        } else {
+            comment.setNickname("User #" + comment.getUserId());
+        }
+    }
+
+    private boolean containsAiTrigger(String content) {
+        return content != null && content.toLowerCase().contains(AI_TRIGGER);
+    }
+
+    private void createAssistantReply(Integer postId, HealthComment triggerComment) {
+        CommunityPost post = postMapper.selectById(postId);
+        if (post == null) {
+            return;
+        }
+
+        CommunityReplyContext context = new CommunityReplyContext();
+        context.setPostTitle(post.getTitle());
+        context.setPostContent(post.getContent());
+        context.setTriggerComment(triggerComment.getContent());
+
+        String replyText;
+        try {
+            replyText = aiService.generateCommunityReply(context);
+        } catch (Exception ignored) {
+            return;
+        }
+        if (replyText == null || replyText.isBlank()) {
+            return;
+        }
+
+        SysUser assistant = ensureAssistantUser();
+        HealthComment reply = new HealthComment();
+        reply.setUserId(assistant.getId());
+        reply.setTargetId(postId);
+        reply.setTargetType("POST");
+        reply.setParentId(triggerComment.getId());
+        reply.setContent(replyText.trim());
+        reply.setCreateTime(LocalDateTime.now());
+        commentMapper.insert(reply);
+        incrementPostCommentCount(postId);
+    }
+
+    private SysUser ensureAssistantUser() {
+        SysUser assistant = userMapper.selectOne(new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getUsername, AI_ASSISTANT_USERNAME)
+                .last("LIMIT 1"));
+        if (assistant != null) {
+            return assistant;
+        }
+
+        assistant = new SysUser();
+        assistant.setUsername(AI_ASSISTANT_USERNAME);
+        assistant.setPassword("tbw-ai");
+        assistant.setNickname(AI_ASSISTANT_NICKNAME);
+        assistant.setRole("USER");
+        assistant.setStatus(1);
+        assistant.setCreateTime(LocalDateTime.now());
+        userMapper.insert(assistant);
+        return assistant;
+    }
+
+    private void incrementPostCommentCount(Integer postId) {
+        CommunityPost post = postMapper.selectById(postId);
+        if (post == null) {
+            return;
+        }
+        post.setCommentCount((post.getCommentCount() == null ? 0 : post.getCommentCount()) + 1);
+        postMapper.updateById(post);
     }
 }

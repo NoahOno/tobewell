@@ -6,7 +6,7 @@
       <!-- == ACTIVITY CENTER == -->
       <template v-if="activeTab === 'activityCenter'">
         <div class="activity-page-header">
-          <div class="activity-page-title">🎯 活动中心</div>
+          <div class="activity-page-title">活动中心</div>
           <div class="activity-page-sub">发现并参与官方精选活动，完成目标解锁专属积分奖励</div>
         </div>
 
@@ -84,12 +84,11 @@
           <div class="post-detail-inline">
             <!-- Back bar -->
             <div class="detail-back-bar">
-              <el-button :icon="ArrowLeft" round @click="closePost">返回帖子流</el-button>
-              <span class="detail-back-title">{{ viewingPost.title }}</span>
+              <el-button class="detail-back-btn" :icon="ArrowLeft" circle @click="closePost" />
             </div>
 
             <!-- Post body -->
-            <div class="detail-post-body premium-card">
+            <div class="detail-post-body">
               <div class="post-header">
                 <el-avatar :size="40" class="post-avatar" @click="showUserCard(viewingPost.userId)">{{ (viewingPost.nickname || '#')[0] }}</el-avatar>
                 <div class="post-author-info">
@@ -100,7 +99,6 @@
                   <el-button v-if="viewingPost.userId === currentUserId" size="small" link type="danger" @click="deletePost(viewingPost.id)">删除</el-button>
                 </div>
               </div>
-              <h2 class="detail-post-title">{{ viewingPost.title }}</h2>
               <div class="detail-tags" v-if="viewingPost.tags">
                 <el-tag v-for="tag in (viewingPost.tags||'').split(',')" :key="tag" size="small" type="info" effect="plain"># {{ tag.trim() }}</el-tag>
               </div>
@@ -131,11 +129,12 @@
 
             <!-- Comments section -->
             <div class="detail-comments premium-card">
-              <div class="comments-title">💬 评论 ({{ postComments.length }})</div>
+              <div class="comments-title">评论 ({{ postComments.length }})</div>
               <div class="comment-input-row">
                 <el-input v-model="commentText" placeholder="写下你的看法..." type="textarea" :rows="2" />
                 <el-button type="primary" round :disabled="!commentText" @click="submitComment">发布</el-button>
               </div>
+              <div class="comment-tip">输入 `@tbw` 后发布，`tbw 智能助手` 会以回复评论的方式参与问答。</div>
               <div class="comments-list">
                 <div v-for="c in postComments" :key="c.id" class="comment-item">
                   <div class="c-header">
@@ -143,6 +142,18 @@
                     <span class="c-time">{{ formatTime(c.createTime) }}</span>
                   </div>
                   <div class="c-content">{{ c.content }}</div>
+                  <div v-if="c.replies?.length" class="comment-replies">
+                    <div v-for="reply in c.replies" :key="reply.id" class="reply-item" :class="{ 'reply-ai': isAiReply(reply) }">
+                      <div class="c-header">
+                        <div class="reply-user-wrap">
+                          <span class="c-user" style="cursor:pointer" @click="showUserCard(reply.userId)">{{ reply.nickname || ('用户 #' + reply.userId) }}</span>
+                          <el-tag v-if="isAiReply(reply)" size="small" type="success" effect="plain">AI 回答</el-tag>
+                        </div>
+                        <span class="c-time">{{ formatTime(reply.createTime) }}</span>
+                      </div>
+                      <div class="c-content">{{ reply.content }}</div>
+                    </div>
+                  </div>
                 </div>
                 <div v-if="postComments.length === 0" class="no-comments">还没有评论，快来发表看法！</div>
               </div>
@@ -227,7 +238,7 @@
     <!-- ===== RIGHT SIDEBAR (sticky, own scroll, hidden in activity center) ===== -->
     <aside v-if="activeTab !== 'activityCenter'" class="community-right">
       <div class="right-card premium-card">
-        <div class="right-title">🔥 热门话题</div>
+        <div class="right-title">热门话题</div>
         <div v-for="(hot, i) in hotPosts" :key="hot.id" class="hot-item" @click="openPost(hot)">
           <span class="hot-rank" :class="`rank-${i+1}`">{{ i + 1 }}</span>
           <span class="hot-text">{{ hot.title }}</span>
@@ -235,7 +246,7 @@
         <el-empty v-if="hotPosts.length === 0" description="暂无热门" :image-size="60" />
       </div>
       <div class="right-card premium-card">
-        <div class="right-title">🎯 热门活动</div>
+        <div class="right-title">热门活动</div>
         <div v-for="(act, i) in trendingActivities" :key="act.id" class="hot-item" @click="openActivityDetail(act.id)">
           <span class="hot-rank" :class="`rank-${i+1}`">{{ i + 1 }}</span>
           <span class="hot-text">{{ act.title }}</span>
@@ -243,7 +254,7 @@
         <el-empty v-if="trendingActivities.length === 0" description="暂无热门活动" :image-size="60" />
       </div>
       <div class="right-card premium-card">
-        <div class="right-title">📢 社区公告</div>
+        <div class="right-title">社区公告</div>
         <p style="font-size:13px; color:#64748B; line-height:1.7; margin:0">欢迎来到健康管理社区！发帖时使用 #话题 可以自动添加标签，请遵守社区规定，保持友善交流。</p>
       </div>
     </aside>
@@ -326,7 +337,7 @@
                 <!-- 打卡按钮 -->
                 <el-button v-if="activityDetail.activityType === 1" type="warning" size="large" round :loading="checkinLoading" @click="handleCheckIn">📝 今日打卡</el-button>
                 <!-- 发帖按钮 -->
-                <el-button v-if="activityDetail.activityType === 3" type="primary" size="large" round @click="openPostDialogWithTopic">💬 一键发帖</el-button>
+                <el-button v-if="activityDetail.activityType === 3" type="primary" size="large" round @click="openPostDialogWithTopic">一键发帖</el-button>
               </template>
             </template>
           </div>
@@ -457,6 +468,7 @@ const selectedPost = ref<any>(null)
 const viewingPost = ref<any>(null)
 const cardUser = ref<any>(null)
 const commentText = ref('')
+const commentSubmitting = ref(false)
 const postSubmitting = ref(false)
 const uploadingImages = ref(false)
 
@@ -705,6 +717,12 @@ const doSearch = async () => {
 
 const clearSearch = () => { isSearchMode.value = false; searchQ.value = ''; fetchPosts() }
 
+const commentCountDisplay = computed(() =>
+  postComments.value.reduce((count, item) => count + 1 + (item.replies?.length || 0), 0)
+)
+
+const isAiReply = (comment: any) => comment?.nickname === 'tbw 智能助手'
+
 const openPost = async (post: any) => {
   viewingPost.value = post
   commentText.value = ''
@@ -767,12 +785,15 @@ const submitComment = async () => {
   postComments.value = [{ id: Date.now(), userId: currentUserId.value, nickname: '我', content, createTime: new Date().toISOString() }, ...origComments]
   post.commentCount = origCount + 1
   commentText.value = ''
+  commentSubmitting.value = true
   try {
     await request.post(`/community/post/${post.id}/comment`, { content })
     const res: any = await request.get(`/community/post/${post.id}/comments`)
     postComments.value = res.data
+    post.commentCount = commentCountDisplay.value
     ElMessage.success('评论发布成功')
   } catch { postComments.value = origComments; post.commentCount = origCount; commentText.value = content; ElMessage.error('回复失败') }
+  commentSubmitting.value = false
 }
 
 const openPostDialog = (prefill?: { title?: string; content?: string }) => {
@@ -887,12 +908,9 @@ onUnmounted(() => {
   align-items: center;
   padding: 14px 4px;
   margin-bottom: 12px;
-  background: rgba(244, 247, 249, 0.85); /* Blend with layout background */
-  backdrop-filter: blur(12px);
-  border-radius: 12px;
 }
 .feed-search { flex: 1; }
-.feed-search :deep(.el-input__wrapper) { border-radius: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border: none; }
+.feed-search :deep(.el-input__wrapper) { border-radius: 18px; box-shadow: none; border: 1px solid #E2E8F0; background: #fff; }
 
 /* Right sidebar - sticky with own scroll */
 .community-right {
@@ -1162,28 +1180,19 @@ onUnmounted(() => {
 .detail-back-bar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 0 16px;
+  justify-content: flex-start;
+  padding: 4px 0 14px;
   position: sticky;
   top: 0;
   z-index: 10;
-  background: rgba(244, 247, 249, 0.9);
-  backdrop-filter: blur(10px);
   margin-bottom: 4px;
 }
-.detail-back-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #1E293B;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  flex: 1;
+.detail-back-btn {
+  border-color: #D1D5DB;
 }
 
 .detail-post-body {
-  padding: 24px;
-  border-radius: 20px;
+  padding: 8px 0 18px;
   margin-bottom: 12px;
 }
 .detail-post-title {
@@ -1217,8 +1226,13 @@ onUnmounted(() => {
 .detail-actions { display: flex; gap: 12px; flex-wrap: wrap; }
 .comments-title { font-size: 16px; font-weight: 800; color: #0F172A; margin-bottom: 16px; }
 .comment-input-row { display: flex; gap: 10px; margin-bottom: 16px; }
+.comment-tip { margin-bottom: 12px; color: #64748B; font-size: 13px; line-height: 1.6; }
 .comments-list { display: flex; flex-direction: column; gap: 10px; }
 .comment-item { padding: 12px 16px; background: #F8FAFC; border-radius: 12px; }
+.comment-replies { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.reply-item { margin-left: 14px; padding: 10px 12px; border-radius: 10px; background: #ffffff; border: 1px solid #E2E8F0; }
+.reply-item.reply-ai { background: #F0FDF4; border-color: #BBF7D0; }
+.reply-user-wrap { display: flex; align-items: center; gap: 8px; }
 .c-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
 .c-user { font-weight: 700; font-size: 13px; color: #1E293B; }
 .c-time { font-size: 12px; color: #94A3B8; }

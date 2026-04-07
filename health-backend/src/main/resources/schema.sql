@@ -276,6 +276,47 @@ CREATE TABLE IF NOT EXISTS resource_submission (
     FOREIGN KEY (submitter_id) REFERENCES sys_user(id),
     FOREIGN KEY (reviewer_id) REFERENCES sys_user(id)
 );
+
+CREATE TABLE IF NOT EXISTS ai_provider_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    provider_type TEXT NOT NULL,
+    base_url TEXT,
+    api_key TEXT,
+    model TEXT,
+    extra_headers_json TEXT,
+    enabled BOOLEAN DEFAULT 1,
+    is_default BOOLEAN DEFAULT 0,
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS ai_service_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    service_key TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT,
+    tag_label TEXT,
+    style_label TEXT,
+    system_prompt TEXT,
+    sort_order INTEGER DEFAULT 0,
+    enabled BOOLEAN DEFAULT 1,
+    api_config_id INTEGER,
+    default_intent TEXT DEFAULT 'chat',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (api_config_id) REFERENCES ai_provider_config(id)
+);
+
+INSERT OR IGNORE INTO ai_provider_config (id, name, provider_type, base_url, api_key, model, enabled, is_default)
+VALUES (1, 'OpenRouter Free', 'openrouter', 'https://openrouter.ai/api/v1', '', 'google/gemma-3-27b-it:free', 1, 1);
+
+INSERT OR IGNORE INTO ai_service_config (id, service_key, name, description, tag_label, style_label, system_prompt, sort_order, enabled, api_config_id, default_intent)
+VALUES
+(1, 'mental_counseling', '心理咨询', '情绪疏导、压力管理、正念引导。', '情绪支持', '温和共情', '你是一个耐心、克制、共情的心理健康助手。关注情绪识别、压力调节和可执行的小建议，不做医学诊断。', 10, 1, 1, 'chat'),
+(2, 'fitness_coach', '健身教练', '围绕训练目标给出结构化指导。', '训练指导', '结构化教练', '你是一个专业训练教练。回答要结构化、强调动作安全、训练频率和渐进负荷。', 20, 1, 1, 'training_plan'),
+(3, 'rehab_coach', '康复指导', '偏保守的恢复训练建议。', '康复管理', '风险边界清晰', '你是一个保守的康复训练助手。优先提醒风险边界、疼痛反馈和必要时就医，不鼓励带伤硬练。', 30, 1, 1, 'chat'),
+(4, 'nutrition_coach', '营养指导', '饮食策略与可执行替换建议。', '饮食策略', '可执行规划', '你是一个营养规划助手。强调可持续饮食策略、替换方案和生活化执行，不夸大效果。', 40, 1, 1, 'chat');
 -- Exercise Library Table
 CREATE TABLE IF NOT EXISTS exercise (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

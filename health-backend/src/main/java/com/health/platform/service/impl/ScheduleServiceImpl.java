@@ -26,10 +26,15 @@ public class ScheduleServiceImpl implements ScheduleService {
             weeklyDays = List.of("MONDAY", "WEDNESDAY", "FRIDAY"); // Default
         }
         
+        System.out.println("[ScheduleService] Generating schedule for plan: " + userPlan.getId() + ", userId: " + userPlan.getUserId());
+        System.out.println("[ScheduleService] Start date: " + userPlan.getStartDate() + ", weeklyDays: " + weeklyDays);
+        System.out.println("[ScheduleService] Actions JSON: " + userPlan.getActions());
+        
         // Clear existing future schedules to allow regenerating
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<DailySchedule> deleteWrapper = new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         deleteWrapper.eq("plan_id", userPlan.getId());
-        scheduleMapper.delete(deleteWrapper);
+        int deleted = scheduleMapper.delete(deleteWrapper);
+        System.out.println("[ScheduleService] Deleted " + deleted + " old schedules");
         
         // Parse the plan actions JSON
         List<Map<String, Object>> planDays;
@@ -37,14 +42,21 @@ public class ScheduleServiceImpl implements ScheduleService {
             com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
             planDays = mapper.readValue(userPlan.getActions(), new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
         } catch (Exception e) {
+            System.err.println("[ScheduleService] Failed to parse actions JSON: " + e.getMessage());
             return; // Invalid plan structure
         }
 
-        if (planDays.isEmpty()) return;
+        if (planDays.isEmpty()) {
+            System.out.println("[ScheduleService] No plan days found");
+            return;
+        }
+        
+        System.out.println("[ScheduleService] Found " + planDays.size() + " plan days");
 
         LocalDate current = userPlan.getStartDate() != null ? userPlan.getStartDate() : LocalDate.now();
         int dayOffset = 0;
         int planDayIdx = 0;
+        int createdCount = 0;
         
         // We iterate and map the N days in the plan to the calendar based on chosen weekly training days.
         // If a plan has 28 entries, we place them one by one. 
@@ -58,6 +70,8 @@ public class ScheduleServiceImpl implements ScheduleService {
             
             Map<String, Object> dayConfig = planDays.get(planDayIdx);
             String type = (String) dayConfig.get("type");
+            
+            System.out.println("[ScheduleService] Processing day " + planDayIdx + ", date: " + date + ", dayOfWeek: " + dayOfWeekName + ", type: " + type);
 
             if ("训练".equals(type)) {
                 // Training sessions MUST land on a training day
@@ -98,12 +112,15 @@ public class ScheduleServiceImpl implements ScheduleService {
                     }
                     
                     scheduleMapper.insert(schedule);
+                    createdCount++;
+                    System.out.println("[ScheduleService] Created schedule: " + schedule.getTitle() + " on " + date);
                     planDayIdx++;
                 }
             } else {
                 // Rest days or other non-training days just skip the counter or can be explicitly placed
                 // If it's a rest day in the plan, we just move to the next plan day without requiring a specific calendar day
                 // but usually rest days fill the gaps.
+                System.out.println("[ScheduleService] Skipping non-training day: " + type);
                 planDayIdx++; 
                 // For rest days, we don't necessarily create a DailySchedule unless we want "Rest" tasks.
             }
@@ -111,5 +128,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             dayOffset++;
             if (dayOffset > 365) break; // Safety break
         }
+        
+        System.out.println("[ScheduleService] Schedule generation completed. Created " + createdCount + " schedules");
     }
 }

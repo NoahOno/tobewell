@@ -164,37 +164,52 @@
       <template v-if="activeMenu === 'plans'">
         <div class="section-header">
           <h3>训练管理</h3>
-          <el-radio-group v-model="favoriteTab" size="small">
-            <el-radio-button label="plans">计划</el-radio-button>
-            <el-radio-button label="courses">课程</el-radio-button>
+          <el-radio-group v-model="myTrainingTab" size="small">
+            <el-radio-button label="plans">我的计划</el-radio-button>
+            <el-radio-button label="courses">我的课程</el-radio-button>
           </el-radio-group>
         </div>
 
-        <template v-if="favoriteTab === 'plans'">
+        <template v-if="myTrainingTab === 'plans'">
           <div class="card-grid">
-            <div v-for="plan in favoritePlans" :key="plan.id" class="module-card premium-card">
-               <div class="card-header-tags"><el-tag size="small" type="warning" effect="dark" style="border:none">想练</el-tag></div>
+            <div v-for="plan in activePlans" :key="plan.id" class="module-card premium-card">
+               <div class="card-header-tags">
+                 <el-tag size="small" :type="plan.status === 'ACTIVE' ? 'success' : 'info'" effect="dark" style="border:none">
+                   {{ plan.status === 'ACTIVE' ? '进行中' : '计划中' }}
+                 </el-tag>
+               </div>
                <h3 class="card-title">{{ plan.title }}</h3>
                <p class="card-desc">{{ (plan.description || '').slice(0, 80) }}...</p>
+               <div class="plan-specs mt-2">
+                 <div class="spec-item"><el-icon><Calendar /></el-icon> 开始: {{ plan.startDate }}</div>
+                 <div class="spec-item"><el-icon><Timer /></el-icon> {{ plan.duration || '未设置' }}</div>
+               </div>
                <div class="card-actions mt-3">
-                 <el-button size="small" type="warning" plain round @click="unfavorite(plan, 'PLAN')">移出想练</el-button>
+                 <el-button size="small" type="primary" plain round @click="viewPlanSchedules(plan)">查看日程</el-button>
+                 <el-button size="small" type="danger" plain round @click="handleCancelPlan(plan.id)">取消计划</el-button>
                </div>
             </div>
-            <el-empty v-if="favoritePlans.length === 0" description="暂无添加到想练的计划" />
+            <el-empty v-if="activePlans.length === 0" description="暂无进行中的训练计划，去探索添加一个吧！" />
           </div>
         </template>
 
         <template v-else>
           <div class="card-grid">
-            <div v-for="course in favoriteCourses" :key="course.id" class="module-card premium-card">
-               <div class="card-header-tags"><el-tag size="small" type="primary" effect="dark" style="border:none">单次课收藏</el-tag></div>
+            <div v-for="course in myCourses" :key="course.id" class="module-card premium-card">
+               <div class="card-header-tags">
+                 <el-tag size="small" type="primary" effect="dark" style="border:none">单次课程</el-tag>
+               </div>
                <h3 class="card-title">{{ course.title }}</h3>
                <p class="card-desc">{{ (course.description || '').slice(0, 80) }}...</p>
+               <div class="plan-specs mt-2">
+                 <div class="spec-item"><el-icon><Timer /></el-icon> {{ course.durationMinutes || 0 }} 分钟</div>
+               </div>
                <div class="card-actions mt-3">
-                 <el-button size="small" type="warning" plain round @click="unfavorite(course, 'COURSE')">移出收藏</el-button>
+                 <el-button size="small" type="primary" plain round @click="openImmersiveTraining(course, 'COURSE')">开始训练</el-button>
+                 <el-button size="small" type="danger" plain round @click="handleRemoveCourse(course.id)">移除</el-button>
                </div>
             </div>
-            <el-empty v-if="favoriteCourses.length === 0" description="暂无收藏的单次课程" />
+            <el-empty v-if="myCourses.length === 0" description="暂无训练课程" />
           </div>
         </template>
       </template>
@@ -1474,6 +1489,12 @@ const handleCancelPlan = async (planId: number) => {
     fetchMonthSchedules(selectedDate.value)
     fetchAllMyPlans()
   } catch(e) {}
+}
+
+const viewPlanSchedules = (plan: any) => {
+  // Switch to calendar view and highlight the plan's schedules
+  router.push({ path: '/app/training', query: { tab: 'calendar' } })
+  // The calendar will automatically show all schedules including this plan's
 }
 
 const handleRemoveCourse = async (courseId: number) => {

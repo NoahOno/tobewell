@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Data
 @TableName("health_comment")
@@ -20,4 +22,7 @@ public class HealthComment {
 
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private String nickname;
+
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private List<HealthComment> replies = new ArrayList<>();
 }

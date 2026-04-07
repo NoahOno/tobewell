@@ -157,6 +157,11 @@ const routes: Array<RouteRecordRaw> = [
                         component: () => import('../views/admin/LibraryAudit.vue')
                     }
                 ]
+            },
+            {
+                path: 'health-services',
+                name: 'AdminHealthServices',
+                component: () => import('../views/admin/HealthServices.vue')
             }
         ]
     }
