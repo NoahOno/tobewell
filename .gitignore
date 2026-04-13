@@ -26,6 +26,7 @@ yarn-error.log*
 # Backend (Java/Maven)
 **/target/
 health-backend/health.db
+health-backend/src/main/resources/uploads/
 *.db
 *.sqlite
 *.class
