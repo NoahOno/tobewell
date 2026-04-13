@@ -95,7 +95,12 @@
       >
         <!-- Card Cover / Visual -->
         <div class="ex-cover" :class="coverGradient(ex.muscle)">
-          <el-icon class="ex-cover-icon"><VideoPlay /></el-icon>
+          <template v-if="ex.coverImage || ex.cover_image || ex.imageUrl">
+            <img :src="ex.coverImage || ex.cover_image || ex.imageUrl" class="ex-cover-img" />
+          </template>
+          <template v-else>
+            <el-icon class="ex-cover-icon"><VideoPlay /></el-icon>
+          </template>
           <div class="ex-difficulty-pill" :class="diffClass(ex.difficulty)">{{ ex.difficulty }}</div>
           <div class="ex-offline-badge" v-if="ex.isPublic === false">🚫 已下架</div>
         </div>
@@ -317,6 +322,12 @@ onMounted(fetchExercises)
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+.ex-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .grad-chest    { background: linear-gradient(135deg, #ef4444, #f97316); }
 .grad-back     { background: linear-gradient(135deg, #3b82f6, #06b6d4); }

@@ -16,7 +16,7 @@
         <el-table-column label="用户信息" min-width="250">
           <template #default="sc">
             <div class="user-cell">
-              <el-avatar :size="36" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
+              <el-avatar :size="36" :src="sc.row.avatar || defaultAvatar" />
               <div class="u-info">
                 <span class="u-name">{{ sc.row.nickname || sc.row.username }}</span>
                 <span class="u-username">@{{ sc.row.username }}</span>
@@ -80,6 +80,7 @@ import request from '../../api/request'
 
 const users = ref<any[]>([])
 const loading = ref(false)
+const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 
 const fetchUsers = async () => {
   loading.value = true

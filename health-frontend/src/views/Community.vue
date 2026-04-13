@@ -90,7 +90,7 @@
             <!-- Post body -->
             <div class="detail-post-body">
               <div class="post-header">
-                <el-avatar :size="40" class="post-avatar" @click="showUserCard(viewingPost.userId)">{{ (viewingPost.nickname || '#')[0] }}</el-avatar>
+                <el-avatar :size="40" class="post-avatar" :src="viewingPost.avatar || defaultAvatar" @click="showUserCard(viewingPost.userId)">{{ (viewingPost.nickname || '#')[0] }}</el-avatar>
                 <div class="post-author-info">
                   <span class="author-name" @click="showUserCard(viewingPost.userId)">{{ viewingPost.nickname || ('用户 #' + viewingPost.userId) }}</span>
                   <span class="post-time">{{ formatTime(viewingPost.createTime) }}</span>
@@ -138,7 +138,10 @@
               <div class="comments-list">
                 <div v-for="c in postComments" :key="c.id" class="comment-item">
                   <div class="c-header">
-                    <span class="c-user" style="cursor:pointer" @click="showUserCard(c.userId)">{{ c.nickname || ('用户 #' + c.userId) }}</span>
+                    <div class="comment-user">
+                      <el-avatar :size="28" :src="c.avatar || defaultAvatar" class="comment-avatar">{{ (c.nickname || ('用户 #' + c.userId))[0] }}</el-avatar>
+                      <span class="c-user" style="cursor:pointer" @click="showUserCard(c.userId)">{{ c.nickname || ('用户 #' + c.userId) }}</span>
+                    </div>
                     <span class="c-time">{{ formatTime(c.createTime) }}</span>
                   </div>
                   <div class="c-content">{{ c.content }}</div>
@@ -146,6 +149,7 @@
                     <div v-for="reply in c.replies" :key="reply.id" class="reply-item" :class="{ 'reply-ai': isAiReply(reply) }">
                       <div class="c-header">
                         <div class="reply-user-wrap">
+                          <el-avatar :size="24" :src="reply.avatar || defaultAvatar" class="comment-avatar">{{ (reply.nickname || ('用户 #' + reply.userId))[0] }}</el-avatar>
                           <span class="c-user" style="cursor:pointer" @click="showUserCard(reply.userId)">{{ reply.nickname || ('用户 #' + reply.userId) }}</span>
                           <el-tag v-if="isAiReply(reply)" size="small" type="success" effect="plain">AI 回答</el-tag>
                         </div>
@@ -201,7 +205,7 @@
           @click="openPost(post)"
         >
           <div class="post-header">
-            <el-avatar :size="38" class="post-avatar" @click.stop="showUserCard(post.userId)">{{ (post.nickname || '#')[0] }}</el-avatar>
+            <el-avatar :size="38" class="post-avatar" :src="post.avatar || defaultAvatar" @click.stop="showUserCard(post.userId)">{{ (post.nickname || '#')[0] }}</el-avatar>
             <div class="post-author-info">
               <span class="author-name" @click.stop="showUserCard(post.userId)">{{ post.nickname || ('用户 #' + post.userId) }}</span>
               <span class="post-time">{{ formatTime(post.createTime) }}</span>
@@ -386,7 +390,7 @@
     <!-- ===== USER CARD DIALOG ===== -->
     <el-dialog v-model="userCardVisible" width="320px" :show-header="false" align-center append-to-body class="user-profile-dialog">
       <div v-if="cardUser" class="user-card-content">
-        <el-avatar :size="64" class="card-avatar">{{ (cardUser.nickname || '#')[0] }}</el-avatar>
+        <el-avatar :size="64" class="card-avatar" :src="cardUser.avatar || defaultAvatar">{{ (cardUser.nickname || '#')[0] }}</el-avatar>
         <h3 class="card-nickname">{{ cardUser.nickname || ('用户 #' + cardUser.id) }}</h3>
         <div class="card-stats">
           <div class="stat-item"><b>{{ cardUser.followingCount || 0 }}</b><span>关注</span></div>
@@ -486,6 +490,7 @@ const selectedScheduleType = ref('AUTO')
 const checkinLoading = ref(false)
 
 const currentUserId = ref(0)
+const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 const subscribeForm = reactive({
   weeklyDays: ['MONDAY', 'WEDNESDAY', 'FRIDAY']
 })
@@ -1233,6 +1238,8 @@ onUnmounted(() => {
 .reply-item { margin-left: 14px; padding: 10px 12px; border-radius: 10px; background: #ffffff; border: 1px solid #E2E8F0; }
 .reply-item.reply-ai { background: #F0FDF4; border-color: #BBF7D0; }
 .reply-user-wrap { display: flex; align-items: center; gap: 8px; }
+.comment-user { display: flex; align-items: center; gap: 10px; }
+.comment-avatar { flex-shrink: 0; }
 .c-header { display: flex; justify-content: space-between; margin-bottom: 6px; }
 .c-user { font-weight: 700; font-size: 13px; color: #1E293B; }
 .c-time { font-size: 12px; color: #94A3B8; }

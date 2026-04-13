@@ -8,26 +8,57 @@
     </div>
 
     <div class="table-card premium-card" v-loading="loading">
-      <el-table :data="submissions" style="width: 100%">
-        <el-table-column prop="id" label="ID" width="80" />
-        <el-table-column label="类型" width="120">
+      <div class="audit-summary">
+        <div class="summary-item">
+          <span class="summary-label">待审核申请</span>
+          <strong class="summary-value">{{ submissions.length }}</strong>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">计划申请</span>
+          <strong class="summary-value">{{ planSubmissionCount }}</strong>
+        </div>
+        <div class="summary-item">
+          <span class="summary-label">课程申请</span>
+          <strong class="summary-value">{{ courseSubmissionCount }}</strong>
+        </div>
+      </div>
+
+      <el-table :data="submissions" style="width: 100%" table-layout="fixed">
+        <el-table-column prop="id" label="ID" width="70" />
+        <el-table-column label="类型" width="100">
           <template #default="sc">
-            <el-tag size="small" effect="plain">{{ sc.row.resourceType }}</el-tag>
+            <el-tag size="small" effect="plain">{{ sc.row.resourceType === 'PLAN' ? '训练计划' : '训练课程' }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="resourceId" label="资源ID" width="100" />
-        <el-table-column prop="submitterId" label="提交人" width="100" />
-        <el-table-column label="状态" width="120">
+        <el-table-column label="资源信息" min-width="220" show-overflow-tooltip>
+          <template #default="sc">
+            <div class="resource-cell">
+              <div class="resource-title">{{ sc.row.resourceTitle || `资源 #${sc.row.resourceId}` }}</div>
+              <div class="resource-meta">资源ID {{ sc.row.resourceId }} · 提交人 {{ sc.row.submitterId }}</div>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column label="申请说明" min-width="220" show-overflow-tooltip>
+          <template #default="sc">
+            <span class="submission-note">{{ sc.row.note || '未填写说明' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="提交时间" width="160">
+          <template #default="sc">
+            {{ formatDateTime(sc.row.createTime) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="状态" width="100">
           <template #default="sc">
             <el-tag size="small" :type="sc.row.status === 'PENDING' ? 'warning' : (sc.row.status === 'APPROVED' ? 'success' : 'danger')">
-              {{ sc.row.status }}
+              {{ sc.row.status === 'PENDING' ? '待审核' : (sc.row.status === 'APPROVED' ? '已通过' : '已驳回') }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="220" align="right">
+        <el-table-column label="操作" width="180" align="right">
           <template #default="sc">
             <el-button type="info" size="small" link @click="previewResource(sc.row)">
-               完整预览审核
+               编辑
             </el-button>
             <el-button v-if="sc.row.status === 'PENDING'" type="success" size="small" link @click="approveSubmission(sc.row.id)">
                通过
@@ -42,32 +73,24 @@
     </div>
 
     <!-- Resource Preview Drawer -->
-    <el-drawer v-model="drawerVisible" title="资源入库终审" size="550px" destroy-on-close>
+    <el-drawer v-model="drawerVisible" title="资源入库终审" size="1040px" destroy-on-close>
        <div v-if="loadingResource" v-loading="loadingResource" style="height:200px"></div>
-       <div v-else-if="currentResource" style="padding: 24px;">
-          <div class="audit-header">
-             <el-tag :type="currentSubmission.resourceType === 'PLAN' ? 'primary' : 'success'">{{ currentSubmission.resourceType }}</el-tag>
-             <h3 class="audit-title">{{ currentResource.title || currentResource.name }}</h3>
-          </div>
-          <p class="audit-desc">{{ currentResource.description || currentResource.category || '暂无详细描述' }}</p>
-          
-          <el-divider>结构排期</el-divider>
-          <div v-if="currentSubmission.resourceType === 'PLAN'" class="audit-struct">
-             <div v-for="(act, idx) in parsedActions" :key="idx" class="audit-day">
-                <span class="day-lbl">Day {{ idx + 1 }} · {{ act.type }}</span>
-                <span v-for="(a, aidx) in act.actions" :key="aidx" class="a-tag">{{ a.name }}</span>
-             </div>
-          </div>
-          <div v-else class="audit-struct">
-             <el-timeline>
-                <el-timeline-item v-for="(act, idx) in parsedActions" :key="idx" type="primary">
-                   <strong>{{ act.name }}</strong> ({{ act.sets }})
-                </el-timeline-item>
-             </el-timeline>
+       <div v-else-if="currentResource" class="audit-drawer-body">
+          <div class="audit-drawer-meta">
+            <div>
+              <div class="drawer-kicker">{{ currentSubmission.resourceType === 'PLAN' ? '训练计划申请' : '训练课程申请' }}</div>
+              <div class="drawer-title">{{ currentResource.title || `资源 #${currentSubmission.resourceId}` }}</div>
+            </div>
+            <div class="drawer-note">{{ currentSubmission.note || '申请人未填写补充说明' }}</div>
           </div>
 
+          <TrainingResourceViewer
+            :item="currentResource"
+            :type="currentSubmission.resourceType === 'PLAN' ? 'plan' : 'course'"
+          />
+
           <el-divider border-style="dashed" />
-          <div style="display:flex; gap:16px; margin-top: 32px;">
+          <div class="drawer-actions">
              <el-button style="flex:1" type="danger" round plain @click="rejectSubmission(currentSubmission.id); drawerVisible=false">判定违规/驳回</el-button>
              <el-button style="flex:1" type="success" round @click="approveSubmission(currentSubmission.id); drawerVisible=false">核准入库</el-button>
           </div>
@@ -77,9 +100,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import request from '../../api/request'
+import TrainingResourceViewer from '../../components/TrainingResourceViewer.vue'
 
 const submissions = ref<any[]>([])
 const loading = ref(false)
@@ -87,13 +111,29 @@ const drawerVisible = ref(false)
 const currentSubmission = ref<any>(null)
 const currentResource = ref<any>(null)
 const loadingResource = ref(false)
-const parsedActions = ref<any[]>([])
+
+const planSubmissionCount = computed(() => submissions.value.filter(item => item.resourceType === 'PLAN').length)
+const courseSubmissionCount = computed(() => submissions.value.filter(item => item.resourceType === 'COURSE').length)
 
 const fetchSubmissions = async () => {
   loading.value = true
   try {
     const res: any = await request.get('/resource/admin/submissions', { params: { status: 'PENDING' } })
-    submissions.value = res.data || []
+    const rawList = res.data || []
+    const [planRes, courseRes] = await Promise.all([
+      request.get('/admin/plans'),
+      request.get('/admin/courses')
+    ])
+    const planMap = new Map((((planRes as any).data) || []).map((item: any) => [item.id, item]))
+    const courseMap = new Map((((courseRes as any).data) || []).map((item: any) => [item.id, item]))
+    submissions.value = rawList.map((item: any) => {
+      const source = item.resourceType === 'PLAN' ? planMap.get(item.resourceId) : courseMap.get(item.resourceId)
+      return {
+        ...item,
+        resourceTitle: source?.title || '',
+        resourceCover: source?.coverImage || source?.cover_image || ''
+      }
+    })
   } finally { loading.value = false }
 }
 
@@ -106,10 +146,6 @@ const previewResource = async (sub: any) => {
      const res: any = await request.get(endpoint)
      const list = res.data || []
      currentResource.value = list.find((i: any) => i.id === sub.resourceId)
-     if (currentResource.value) {
-        const field = sub.resourceType === 'PLAN' ? 'actions' : 'actionsJson'
-        try { parsedActions.value = JSON.parse(currentResource.value[field]) } catch(e) { parsedActions.value = [] }
-     }
   } finally { loadingResource.value = false }
 }
 
@@ -125,17 +161,37 @@ const rejectSubmission = async (id: number) => {
   fetchSubmissions()
 }
 
+const formatDateTime = (value: string) => {
+  if (!value) return '--'
+  return value.replace('T', ' ').slice(0, 16)
+}
+
 onMounted(fetchSubmissions)
 </script>
 
 <style scoped>
-.page-header { margin-bottom: 32px; }
+.page-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 32px; }
 .ph-title { font-size: 28px; font-weight: 800; color: var(--text-main); margin: 0; }
 .ph-desc { font-size: 14px; color: var(--text-muted); }
-.audit-header { display:flex; gap:12px; align-items:center; margin-bottom: 16px; }
-.audit-title { font-size: 20px; font-weight: 800; margin: 0; }
-.audit-desc { font-size: 14px; color: #64748b; line-height: 1.6; }
-.audit-day { border-bottom: 1px solid #f1f5f9; padding: 12px 0; display:flex; flex-direction:column; gap:8px;}
-.day-lbl { font-size: 12px; font-weight: 800; color: #3b82f6; }
-.a-tag { background: #f8fafc; padding: 4px 8px; border-radius: 4px; font-size: 12px; width: fit-content; }
+.audit-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
+.summary-item { padding: 16px 18px; border-radius: 14px; background: #f8fafc; border: 1px solid #e2e8f0; }
+.summary-label { display: block; color: #64748b; font-size: 13px; margin-bottom: 8px; }
+.summary-value { font-size: 24px; color: #0f172a; font-weight: 900; }
+.resource-cell { display: flex; flex-direction: column; gap: 6px; }
+.resource-title { font-size: 14px; font-weight: 800; color: #0f172a; }
+.resource-meta { font-size: 12px; color: #64748b; }
+.submission-note { color: #475569; line-height: 1.6; }
+.audit-drawer-body { padding: 24px; }
+.audit-drawer-meta { display: flex; justify-content: space-between; gap: 24px; align-items: flex-start; margin-bottom: 20px; }
+.drawer-kicker { font-size: 12px; font-weight: 800; color: #3b82f6; margin-bottom: 6px; }
+.drawer-title { font-size: 24px; font-weight: 900; color: #0f172a; }
+.drawer-note { max-width: 320px; padding: 12px 14px; border-radius: 12px; background: #f8fafc; color: #475569; line-height: 1.6; }
+.drawer-actions { display: flex; gap: 16px; margin-top: 32px; }
+
+@media (max-width: 960px) {
+  .audit-summary { grid-template-columns: 1fr; }
+  .audit-drawer-meta { flex-direction: column; }
+  .drawer-note { max-width: none; width: 100%; }
+  .drawer-actions { flex-direction: column; }
+}
 </style>

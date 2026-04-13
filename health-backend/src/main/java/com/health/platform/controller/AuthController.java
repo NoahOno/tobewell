@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.util.SaResult;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.health.platform.common.Result;
 import com.health.platform.entity.SysUser;
 import com.health.platform.mapper.CollectionMapper;
@@ -87,10 +88,20 @@ public class AuthController {
     @PostMapping("/update")
     public Result<Void> update(@RequestBody SysUser user) {
         Integer userId = StpUtil.getLoginIdAsInt();
-        user.setId(userId);
-        user.setUsername(null); // Don't allow changing username
-        user.setRole(null);     // Don't allow changing role
-        userMapper.updateById(user);
+        LambdaUpdateWrapper<SysUser> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(SysUser::getId, userId);
+
+        if (user.getNickname() != null) {
+            updateWrapper.set(SysUser::getNickname, user.getNickname());
+        }
+        if (user.getPassword() != null) {
+            updateWrapper.set(SysUser::getPassword, user.getPassword());
+        }
+        if (user.getAvatar() != null) {
+            updateWrapper.set(SysUser::getAvatar, user.getAvatar());
+        }
+
+        userMapper.update(null, updateWrapper);
         return Result.success();
     }
 

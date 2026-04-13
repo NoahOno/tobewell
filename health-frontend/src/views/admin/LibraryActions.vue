@@ -51,7 +51,7 @@
             </el-button>
             <el-divider direction="vertical" />
             <el-button size="small" type="info" link @click.stop="openPreview(sc.row)">预览</el-button>
-            <el-button size="small" type="primary" link @click.stop="editExercise(sc.row)">详情</el-button>
+            <el-button size="small" type="primary" link @click.stop="editExercise(sc.row)">编辑</el-button>
           </template>
         </el-table-column>
       </el-table>

@@ -21,7 +21,7 @@
             >
               <div class="card-top">
                 <div class="card-author">
-                  <el-avatar :size="32" style="background:#6366f1">{{ (item.authorName || '#')[0] }}</el-avatar>
+                  <el-avatar :size="32" :src="item.authorAvatar || defaultAvatar" />
                   <span class="author-name">{{ item.authorName || '未知用户' }}</span>
                   <span class="collect-time">{{ formatTime(item.createTime) }} 收藏</span>
                 </div>
@@ -64,6 +64,7 @@ import { ElMessage } from 'element-plus'
 const activeTab = ref('POST')
 const loading = ref(false)
 const collections = ref<any[]>([])
+const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 
 const fetchCollections = async () => {
   loading.value = true

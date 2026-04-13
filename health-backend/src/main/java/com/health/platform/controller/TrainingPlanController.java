@@ -282,6 +282,8 @@ public class TrainingPlanController {
         clone.setDuration(original.getDuration());
         clone.setActions(original.getActions());
         clone.setCategory(original.getCategory());
+        clone.setCoverImage(original.getCoverImage());
+        clone.setAudience(original.getAudience());
         clone.setStartDate(req != null && req.getStartDate() != null ? req.getStartDate() : original.getStartDate());
         clone.setEndDate(original.getEndDate());
         clone.setIsPublic(false); // Private copy

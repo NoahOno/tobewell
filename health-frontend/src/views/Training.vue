@@ -173,6 +173,9 @@
         <template v-if="myTrainingTab === 'plans'">
           <div class="card-grid">
             <div v-for="plan in activePlans" :key="plan.id" class="module-card premium-card">
+               <div v-if="resourceCover(plan)" class="module-cover">
+                 <img :src="resourceCover(plan)" class="module-cover-img" />
+               </div>
                <div class="card-header-tags">
                  <el-tag size="small" :type="plan.status === 'ACTIVE' ? 'success' : 'info'" effect="dark" style="border:none">
                    {{ plan.status === 'ACTIVE' ? '进行中' : '计划中' }}
@@ -196,6 +199,9 @@
         <template v-else>
           <div class="card-grid">
             <div v-for="course in myCourses" :key="course.id" class="module-card premium-card">
+               <div v-if="resourceCover(course)" class="module-cover">
+                 <img :src="resourceCover(course)" class="module-cover-img" />
+               </div>
                <div class="card-header-tags">
                  <el-tag size="small" type="primary" effect="dark" style="border:none">单次课程</el-tag>
                </div>
@@ -227,6 +233,9 @@
         <template v-if="favoriteTab === 'plans'">
           <div class="card-grid">
             <div v-for="plan in favoritePlans" :key="plan.id" class="module-card premium-card">
+               <div v-if="resourceCover(plan)" class="module-cover">
+                 <img :src="resourceCover(plan)" class="module-cover-img" />
+               </div>
                <div class="card-header-tags"><el-tag size="small" type="warning" effect="dark" style="border:none">想练</el-tag></div>
                <h3 class="card-title">{{ plan.title }}</h3>
                <p class="card-desc">{{ (plan.description || '').slice(0, 80) }}...</p>
@@ -241,6 +250,9 @@
         <template v-else>
           <div class="card-grid">
             <div v-for="course in favoriteCourses" :key="course.id" class="module-card premium-card">
+               <div v-if="resourceCover(course)" class="module-cover">
+                 <img :src="resourceCover(course)" class="module-cover-img" />
+               </div>
                <div class="card-header-tags"><el-tag size="small" type="primary" effect="dark" style="border:none">单次课收藏</el-tag></div>
                <h3 class="card-title">{{ course.title }}</h3>
                <p class="card-desc">{{ (course.description || '').slice(0, 80) }}...</p>
@@ -270,6 +282,9 @@
         <template v-if="createdTab === 'plan'">
           <div class="card-grid">
             <div v-for="plan in userCreatedPlans" :key="plan.id" class="module-card premium-card">
+              <div v-if="resourceCover(plan)" class="module-cover">
+                <img :src="resourceCover(plan)" class="module-cover-img" />
+              </div>
               <div class="card-header-tags">
                 <el-tag size="small" effect="dark" style="border:none">私有</el-tag>
               </div>
@@ -286,6 +301,9 @@
         <template v-else>
           <div class="card-grid">
             <div v-for="course in myCreatedCourses" :key="course.id" class="module-card premium-card">
+              <div v-if="resourceCover(course)" class="module-cover">
+                <img :src="resourceCover(course)" class="module-cover-img" />
+              </div>
               <div class="card-header-tags">
                 <el-tag size="small" type="primary" effect="dark" style="border:none">私有</el-tag>
               </div>
@@ -1227,6 +1245,8 @@ const parseActions = (json: string) => {
   try { return JSON.parse(json) } catch { return [] }
 }
 
+const resourceCover = (item: any) => item?.coverImage || item?.cover_image || item?.imageUrl || item?.image_url || ''
+
 const frequencyDialogVisible = ref(false)
 const frequencyDays = ref(3)
 const targetFrequencyPlan = ref<any>(null)
@@ -2166,6 +2186,19 @@ onMounted(async () => {
 .module-card {
   padding: 20px;
   transition: all 0.25s;
+}
+.module-cover {
+  margin: -20px -20px 16px;
+  height: 164px;
+  overflow: hidden;
+  border-radius: 18px 18px 0 0;
+  background: linear-gradient(135deg, #dbeafe, #e2e8f0);
+}
+.module-cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 .card-title { font-size: 16px; font-weight: 800; color: #1E293B; margin: 0 0 8px; line-height: 1.4; }
 .card-desc { font-size: 13px; color: #64748B; line-height: 1.5; margin: 0; }

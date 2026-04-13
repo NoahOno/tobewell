@@ -22,6 +22,8 @@ public class HealthComment {
 
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private String nickname;
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String avatar;
 
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private List<HealthComment> replies = new ArrayList<>();

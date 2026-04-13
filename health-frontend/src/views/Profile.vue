@@ -47,10 +47,13 @@
         
         <el-form-item label="个人头像">
           <div class="avatar-manager">
-            <el-avatar :size="80" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" class="premium-avatar" />
+            <el-avatar :size="80" :src="form.avatar || defaultAvatar" class="premium-avatar" />
             <div class="avatar-rights">
-              <el-button size="small" round disabled>更换头像</el-button>
-              <p class="premium-tip">由于系统限制，当前仅支持默认能量头像。</p>
+              <el-button size="small" round @click="triggerAvatarUpload" :loading="avatarUploading">
+                {{ avatarUploading ? '上传中...' : '更换头像' }}
+              </el-button>
+              <input ref="avatarInput" type="file" accept="image/*" class="avatar-input" @change="handleAvatarChange" />
+              <p class="premium-tip">支持上传 JPG/PNG 图片，上传后会自动保存。</p>
             </div>
           </div>
         </el-form-item>
@@ -73,9 +76,13 @@ import request from '../api/request'
 
 const loading = ref(false)
 const newPassword = ref('')
+const avatarInput = ref<HTMLInputElement | null>(null)
+const avatarUploading = ref(false)
+const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 const form = reactive({
   username: '',
-  nickname: ''
+  nickname: '',
+  avatar: ''
 })
 
 const stats = reactive({
@@ -99,8 +106,46 @@ const fetchProfile = async () => {
     const res: any = await request.get('/auth/info')
     form.username = res.data.username
     form.nickname = res.data.nickname
+    form.avatar = res.data.avatar || ''
   } catch (err) {
     console.error(err)
+  }
+}
+
+const triggerAvatarUpload = () => {
+  avatarInput.value?.click()
+}
+
+const handleAvatarChange = async (event: Event) => {
+  const input = event.target as HTMLInputElement
+  if (!input.files?.length) return
+
+  const file = input.files[0]
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp']
+  if (!allowedTypes.includes(file.type)) {
+    ElMessage.warning('只支持 JPG/PNG/WEBP 格式的头像')
+    return
+  }
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  avatarUploading.value = true
+  try {
+    const res: any = await request.post('/api/file/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    if (res.url) {
+      form.avatar = res.url
+      ElMessage.success('头像上传成功，请点击保存完成更新')
+    }
+  } catch (err) {
+    console.error(err)
+  } finally {
+    avatarUploading.value = false
+    if (avatarInput.value) {
+      avatarInput.value.value = ''
+    }
   }
 }
 
@@ -110,6 +155,7 @@ const handleUpdate = async () => {
   try {
     const updateData: any = { nickname: form.nickname }
     if (newPassword.value) updateData.password = newPassword.value
+    if (form.avatar) updateData.avatar = form.avatar
     
     const res: any = await request.post('/auth/update', updateData)
     if (res.code === 200) {
@@ -232,6 +278,10 @@ onMounted(() => {
   background: var(--bg-main);
   padding: 20px;
   border-radius: var(--radius-inner);
+}
+
+.avatar-input {
+  display: none;
 }
 
 .premium-avatar {

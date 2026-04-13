@@ -28,6 +28,8 @@ public class CommunityPost {
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private String nickname;
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
+    private String avatar;
+    @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private Boolean isLiked;
     @com.baomidou.mybatisplus.annotation.TableField(exist = false)
     private Boolean isCollected;

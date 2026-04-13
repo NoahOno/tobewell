@@ -55,7 +55,7 @@
         <div class="header-right">
           <el-dropdown @command="handleCommand">
             <div class="admin-user-info">
-              <el-avatar :size="32" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
+              <el-avatar :size="32" :src="adminAvatar || defaultAvatar" />
               <div class="admin-name">
                 <span class="role-tag">系统管理员</span>
                 <span class="name-text">{{ nickname }}</span>
@@ -96,6 +96,8 @@ const route = useRoute()
 const router = useRouter()
 
 const nickname = ref('')
+const adminAvatar = ref('')
+const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 const isAdmin = ref(false)
 
 const activePath = computed(() => route.path)
@@ -129,6 +131,7 @@ onMounted(async () => {
       return
     }
     nickname.value = res.data.nickname || res.data.username || 'Administrator'
+    adminAvatar.value = res.data.avatar || ''
     isAdmin.value = true
   } catch (error) {
     router.push('/login')

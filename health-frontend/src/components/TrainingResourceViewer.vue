@@ -6,7 +6,7 @@
       <!-- LEFT SIDE: Cover Top, Basic Info Bottom -->
       <div class="trv-side-left">
         <div class="trv-media-wrap">
-          <img v-if="item.coverImage || item.imageUrl" :src="item.coverImage || item.imageUrl" class="trv-main-img" />
+          <img v-if="coverSrc" :src="coverSrc" class="trv-main-img" />
           <div v-else class="trv-img-placeholder">
             <el-icon v-if="type==='exercise'"><VideoCamera /></el-icon>
             <el-icon v-else-if="type==='course'"><Lightning /></el-icon>
@@ -56,12 +56,26 @@
             <!-- Right Top: GIF/Video -->
             <div class="trv-section no-margin-top">
               <div class="demo-gif-box">
-                 <img v-if="item.videoUrl" :src="item.videoUrl" class="demo-gif" @error="(e:any)=>e.target.src='https://api.dicebear.com/7.x/shapes/svg?seed=demo'" />
-                 <div v-else class="demo-stub">
-                    <el-icon><VideoPlay /></el-icon>
-                    <span>演示正在准备中...</span>
-                 </div>
+              <template v-if="demoMediaUrl">
+                <video
+                  v-if="isDemoVideo"
+                  controls
+                  class="demo-gif"
+                  :src="demoMediaUrl"
+                  @error="(e:any)=>e.target.style.display='none'"
+                ></video>
+                <img
+                  v-else
+                  :src="demoMediaUrl"
+                  class="demo-gif"
+                  @error="(e:any)=>e.target.src='https://api.dicebear.com/7.x/shapes/svg?seed=demo'"
+                />
+              </template>
+              <div v-else class="demo-stub">
+                <el-icon><VideoPlay /></el-icon>
+                <span>演示正在准备中...</span>
               </div>
+            </div>
             </div>
             
             <!-- Right Bottom: Detailed Info -->
@@ -234,6 +248,19 @@ const parsedDays = computed<any[]>(() => {
     const p = JSON.parse(raw)
     return Array.isArray(p) ? p : []
   } catch { return [] }
+})
+
+const coverSrc = computed(() => {
+  return props.item?.coverImage || props.item?.cover_image || props.item?.imageUrl || props.item?.image_url || ''
+})
+
+const demoMediaUrl = computed(() => {
+  return props.item?.videoUrl || props.item?.video_url || props.item?.imageUrl || props.item?.image_url || ''
+})
+
+const isDemoVideo = computed(() => {
+  const url = demoMediaUrl.value || ''
+  return /\.(mp4|webm|ogg)$/i.test(url)
 })
 
 const parsedActions = computed<any[]>(() => {

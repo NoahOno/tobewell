@@ -174,6 +174,7 @@ public class InteractionController {
                     map.put("images", post.getImages());
                     SysUser author = userMapper.selectById(post.getUserId());
                     map.put("authorName", author != null ? author.getNickname() : "未知用户");
+                    map.put("authorAvatar", author != null ? author.getAvatar() : null);
                     map.put("postUserId", post.getUserId());
                 }
             }

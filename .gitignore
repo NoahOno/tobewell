@@ -43,3 +43,6 @@ health-backend/health.db
 
 # Docs
 docs/
+
+# Photos
+photos/

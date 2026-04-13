@@ -128,6 +128,7 @@ public class CourseController {
         clone.setDurationMinutes(original.getDurationMinutes());
         clone.setActionsJson(original.getActionsJson());
         clone.setCoverImage(original.getCoverImage());
+        clone.setAudience(original.getAudience());
         clone.setIsPublic(false);
         clone.setCreatorId(userId);
 

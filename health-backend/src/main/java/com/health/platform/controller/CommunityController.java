@@ -111,6 +111,7 @@ public class CommunityController {
             SysUser user = userMapper.selectById(post.getUserId());
             if (user != null) {
                 post.setNickname(user.getNickname());
+                post.setAvatar(user.getAvatar());
             } else {
                 post.setNickname("用户 #" + post.getUserId());
             }
@@ -355,6 +356,7 @@ public class CommunityController {
         java.util.Map<String, Object> map = new java.util.HashMap<>();
         map.put("id", user.getId());
         map.put("nickname", user.getNickname());
+        map.put("avatar", user.getAvatar());
         map.put("isFollowing", userFollowMapper.selectCount(new LambdaQueryWrapper<UserFollow>()
                 .eq(UserFollow::getFollowerId, StpUtil.getLoginIdAsInt())
                 .eq(UserFollow::getFolloweeId, id)) > 0);
@@ -372,6 +374,7 @@ public class CommunityController {
         SysUser user = userMapper.selectById(comment.getUserId());
         if (user != null) {
             comment.setNickname(user.getNickname());
+            comment.setAvatar(user.getAvatar());
         } else {
             comment.setNickname("User #" + comment.getUserId());
         }

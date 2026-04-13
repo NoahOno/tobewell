@@ -118,7 +118,14 @@
               <div v-else class="exercise-grid">
                 <div v-for="plan in filteredPlans" :key="plan.id" class="ex-card premium-card">
                   <div class="ex-image-placeholder" @click="openDetail(plan)">
-                    <el-icon class="play-icon"><VideoCamera /></el-icon>
+                    <template v-if="plan.coverImage || plan.cover_image || plan.imageUrl">
+                      <img :src="plan.coverImage || plan.cover_image || plan.imageUrl" class="ex-card-img" />
+                    </template>
+                    <template v-else>
+                      <div class="ex-placeholder-icon">
+                        <el-icon><VideoCamera /></el-icon>
+                      </div>
+                    </template>
                     <div class="difficulty-badge" :class="plan.difficulty || '初级'">{{ plan.difficulty || '初级' }}</div>
                   </div>
                   <div class="ex-info">
@@ -141,7 +148,14 @@
               <div v-else class="exercise-grid">
                 <div v-for="course in filteredCourses" :key="course.id" class="ex-card premium-card">
                   <div class="ex-image-placeholder" @click="openCourseDetail(course)">
-                    <el-icon class="play-icon"><VideoCamera /></el-icon>
+                    <template v-if="course.coverImage || course.cover_image || course.imageUrl">
+                      <img :src="course.coverImage || course.cover_image || course.imageUrl" class="ex-card-img" />
+                    </template>
+                    <template v-else>
+                      <div class="ex-placeholder-icon">
+                        <el-icon><VideoCamera /></el-icon>
+                      </div>
+                    </template>
                     <div class="difficulty-badge" :class="course.difficulty || '初级'">{{ course.difficulty || '初级' }}</div>
                   </div>
                   <div class="ex-info">
@@ -169,7 +183,12 @@
             <div class="exercise-grid">
               <div v-for="svc in serviceCardsData" :key="svc.key" class="ex-card premium-card" @click="openServiceChat(svc)">
                 <div class="ex-image-placeholder">
-                  <el-icon class="play-icon"><MagicStick /></el-icon>
+                  <template v-if="svc.coverImage">
+                    <img :src="svc.coverImage" class="ex-card-img" />
+                  </template>
+                  <template v-else>
+                    <el-icon class="play-icon"><MagicStick /></el-icon>
+                  </template>
                   <div class="difficulty-badge">{{ svc.styleLabel }}</div>
                 </div>
                 <div class="ex-info">
@@ -462,6 +481,13 @@ const syncModuleWithRouteTab = (tab?: string) => {
   }
 }
 
+const serviceCoverImageMap: Record<string, string> = {
+  mental_counseling: 'http://localhost:8080/uploads/dialog_mental_counseling.png',
+  fitness_coach: 'http://localhost:8080/uploads/dialog_fitness_coach.png',
+  rehab_coach: 'http://localhost:8080/uploads/dialog_rehab_coach.png',
+  nutrition_coach: 'http://localhost:8080/uploads/dialog_nutrition_coach.png'
+}
+
 const fetchAiServices = async () => {
   try {
     const res: any = await request.get('/ai/services')
@@ -470,7 +496,8 @@ const fetchAiServices = async () => {
       title: item.name,
       description: item.description,
       styleLabel: item.styleLabel,
-      tag: item.tagLabel
+      tag: item.tagLabel,
+      coverImage: serviceCoverImageMap[item.serviceKey] || ''
     }))
   } catch (error) {
     serviceCardsData.value = []
@@ -587,6 +614,8 @@ const fetchPlans = async () => {
     // Inject mock data for plan structure if missing attributes to showcase the new design
     plans.value = res.data.map((p: any) => ({
       ...p,
+      coverImage: p.coverImage || p.cover_image || p.imageUrl || p.image_url || '',
+      imageUrl: p.imageUrl || p.image_url || '',
       goal: p.category && p.category.includes('减脂') ? '减脂' : (p.category && p.category.includes('增肌') ? '增肌' : '体能'),
       difficulty: '初级',
       duration: '4周',
@@ -977,6 +1006,23 @@ watch(() => route.query.tab, (newTab) => {
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
+}
+
+.ex-card-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ex-placeholder-icon {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 
 .play-icon {

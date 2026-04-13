@@ -22,7 +22,7 @@
       <div class="header-right">
         <el-dropdown @command="handleCommand">
           <span class="user-info">
-            <el-avatar :size="32" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
+            <el-avatar :size="32" :src="userInfo.avatar || defaultAvatar" />
             <span class="user-name">{{ userInfo.nickname || userInfo.username }}</span>
           </span>
           <template #dropdown>
@@ -145,6 +145,7 @@ import request from '../api/request'
 const route = useRoute()
 const router = useRouter()
 const userInfo = ref<any>({})
+const defaultAvatar = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
 
 const activeTopModule = ref('mine')
 
