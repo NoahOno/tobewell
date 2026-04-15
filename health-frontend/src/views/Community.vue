@@ -818,7 +818,7 @@ const handleImageUpload = async (event: Event) => {
     for (const file of toUpload) {
       const fd = new FormData()
       fd.append('file', file)
-      const res: any = await request.post('/api/file/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      const res: any = await request.post('/file/upload', fd)
       if (res.url) postForm.images.push(res.url)
     }
   } catch (e) { ElMessage.error('图片上传失败') } finally {

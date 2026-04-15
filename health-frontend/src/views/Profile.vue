@@ -132,9 +132,7 @@ const handleAvatarChange = async (event: Event) => {
 
   avatarUploading.value = true
   try {
-    const res: any = await request.post('/api/file/upload', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    const res: any = await request.post('/file/upload', formData)
     if (res.url) {
       form.avatar = res.url
       ElMessage.success('头像上传成功，请点击保存完成更新')

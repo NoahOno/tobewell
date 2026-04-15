@@ -12,6 +12,9 @@ spring:
       charset: UTF-8
       force: true
       enabled: true
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
   sql:
     init:
       mode: always
@@ -40,7 +43,7 @@ springdoc:
     path: /swagger-ui.html
 custom:
   upload-path: src/main/resources/uploads/
-  upload-url-prefix: http://localhost:8080/uploads/
+  upload-url-prefix: /api/uploads/
 
 ai:
   provider: openai-compatible

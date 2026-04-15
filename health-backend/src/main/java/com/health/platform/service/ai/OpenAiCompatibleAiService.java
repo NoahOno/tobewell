@@ -101,11 +101,23 @@ public class OpenAiCompatibleAiService implements AiService {
 
         StringBuilder prompt = new StringBuilder();
         prompt.append("You are tbw smart assistant inside a public health community thread. ");
-        prompt.append("Answer in concise Chinese based on the post and comment context. ");
+        prompt.append("Answer in concise, helpful Chinese based on the post and comment context. ");
+        prompt.append("Do not repeat or summarize the post unless the user explicitly asks what it means. ");
+        prompt.append("Prefer directly giving practical advice, judgment, or next steps for the trigger comment. ");
         prompt.append("Do not claim to be a doctor. Avoid exaggerated claims. Mention medical review when safety is unclear.\n");
         prompt.append("Post title: ").append(safeText(context.getPostTitle())).append("\n");
         prompt.append("Post body: ").append(safeText(context.getPostContent())).append("\n");
         prompt.append("Trigger comment: ").append(safeText(context.getTriggerComment())).append("\n");
+        if (context.getRecentComments() != null && !context.getRecentComments().isEmpty()) {
+            prompt.append("Recent comments:\n");
+            for (String item : context.getRecentComments()) {
+                prompt.append("- ").append(safeText(item)).append("\n");
+            }
+        }
+        prompt.append("Reply requirements:\n");
+        prompt.append("1. Directly answer the trigger comment instead of restating the post.\n");
+        prompt.append("2. If the post is asking for help, give 2-4 concrete suggestions.\n");
+        prompt.append("3. Keep it under 120 Chinese characters unless safety explanation is necessary.\n");
         String reply = requestTextCompletion(prompt.toString(), providerConfig);
         return StringUtils.hasText(reply) ? reply.trim() : fallback;
     }
@@ -252,32 +264,44 @@ public class OpenAiCompatibleAiService implements AiService {
         String title = safeText(context != null ? context.getPostTitle() : null);
         String body = safeText(context != null ? context.getPostContent() : null);
         String trigger = safeText(context != null ? context.getTriggerComment() : null).toLowerCase();
+        String merged = (title + " " + body + " " + trigger).toLowerCase();
 
-        String summary = summarizePostContent(title, body);
         if (trigger.contains("说什么") || trigger.contains("什么意思") || trigger.contains("讲什么")) {
-            return "这条帖子主要在说：" + summary;
+            return "这条帖子主要是在讨论“" + (StringUtils.hasText(title) ? title : "健康问题") + "”，核心是在求可执行的改善建议。";
+        }
+        if (containsSleepKeywords(title, body, trigger)) {
+            return "如果是压力大导致睡眠变差，先固定起床时间、下午后停咖啡因、睡前1小时别继续工作；若持续2周以上，建议线下评估。";
+        }
+        if (containsSorenessKeywords(merged)) {
+            return "想预防运动后肌肉酸痛，重点做3件事：训练前热身5到10分钟、强度循序加量别突然冲太猛、练后补水并做轻度拉伸；若是刺痛或持续加重，要暂停并排查受伤。";
+        }
+        if (containsDietKeywords(merged)) {
+            return "饮食类问题优先抓3点：先保证总热量别失控、蛋白质和蔬菜先吃、把最容易失守的一餐提前准备好，这样通常比单纯硬扛更有效。";
+        }
+        if (containsRunningKeywords(merged)) {
+            return "如果是跑步相关问题，先把配速放慢、单次里程别突然加太多、跑后做小腿和臀腿放松；出现关节刺痛或落地疼，优先休息观察。";
         }
         if (trigger.contains("适合") || trigger.contains("能不能") || trigger.contains("可以吗")) {
-            return "结合帖子内容看，" + summary + " 如果要继续判断是否适合你，可以再补充你的训练基础和限制。";
+            return "能不能做通常取决于你的基础、频率和是否有疼痛限制。一般原则是先从低强度、小剂量开始，过程中没有明显不适再逐步加量。";
         }
-        return "结合这条帖子的内容，" + summary;
+        return "结合帖子内容，建议先从诱因、频率和身体反应三个点排查，再优先做低风险、容易坚持的调整；如果已经明显影响日常状态，尽量尽早线下评估。";
     }
 
-    private String summarizePostContent(String title, String body) {
-        if (StringUtils.hasText(body)) {
-            String normalized = body.replace('\n', ' ').trim();
-            if (normalized.length() > 56) {
-                normalized = normalized.substring(0, 56) + "...";
-            }
-            if (StringUtils.hasText(title)) {
-                return "帖子围绕“" + title + "”展开，内容提到" + normalized;
-            }
-            return normalized;
-        }
-        if (StringUtils.hasText(title)) {
-            return "帖子围绕“" + title + "”展开。";
-        }
-        return "帖子在讨论健康训练相关问题。";
+    private boolean containsSleepKeywords(String title, String body, String trigger) {
+        String merged = (safeText(title) + " " + safeText(body) + " " + safeText(trigger)).toLowerCase();
+        return merged.contains("睡眠") || merged.contains("失眠") || merged.contains("睡不着") || merged.contains("睡不好");
+    }
+
+    private boolean containsSorenessKeywords(String merged) {
+        return merged.contains("酸痛") || merged.contains("肌肉酸") || merged.contains("doms") || merged.contains("恢复");
+    }
+
+    private boolean containsDietKeywords(String merged) {
+        return merged.contains("饮食") || merged.contains("减脂") || merged.contains("零食") || merged.contains("外卖") || merged.contains("营养");
+    }
+
+    private boolean containsRunningKeywords(String merged) {
+        return merged.contains("跑步") || merged.contains("配速") || merged.contains("里程") || merged.contains("慢跑");
     }
 
     private String stripCodeFence(String content) {

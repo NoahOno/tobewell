@@ -384,6 +384,31 @@ public class CommunityController {
         return content != null && content.toLowerCase().contains(AI_TRIGGER);
     }
 
+    private String stripAiTrigger(String content) {
+        if (content == null) {
+            return "";
+        }
+        return content.replaceAll("(?i)@tbw", "").trim();
+    }
+
+    private List<String> loadRecentCommentSnippets(Integer postId, Integer triggerCommentId) {
+        List<HealthComment> recent = commentMapper.selectList(new LambdaQueryWrapper<HealthComment>()
+                .eq(HealthComment::getTargetId, postId)
+                .eq(HealthComment::getTargetType, "POST")
+                .ne(triggerCommentId != null, HealthComment::getId, triggerCommentId)
+                .orderByDesc(HealthComment::getCreateTime)
+                .last("LIMIT 5"));
+
+        List<String> snippets = new ArrayList<>();
+        for (HealthComment item : recent) {
+            if (item == null || item.getContent() == null || item.getContent().isBlank()) {
+                continue;
+            }
+            snippets.add(item.getContent().trim());
+        }
+        return snippets;
+    }
+
     private void createAssistantReply(Integer postId, HealthComment triggerComment) {
         CommunityPost post = postMapper.selectById(postId);
         if (post == null) {
@@ -393,7 +418,8 @@ public class CommunityController {
         CommunityReplyContext context = new CommunityReplyContext();
         context.setPostTitle(post.getTitle());
         context.setPostContent(post.getContent());
-        context.setTriggerComment(triggerComment.getContent());
+        context.setTriggerComment(stripAiTrigger(triggerComment.getContent()));
+        context.setRecentComments(loadRecentCommentSnippets(postId, triggerComment.getId()));
 
         String replyText;
         try {

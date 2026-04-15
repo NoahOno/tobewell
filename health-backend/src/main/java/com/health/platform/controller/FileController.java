@@ -14,7 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/file")
+@RequestMapping({"/file", "/api/file"})
 public class FileController {
 
     @Value("${custom.upload-path}")
@@ -37,21 +37,22 @@ public class FileController {
         String suffixName = fileName.substring(fileName.lastIndexOf("."));
         String newFileName = UUID.randomUUID().toString() + suffixName;
 
-        File dest = new File(uploadPath + newFileName);
-
-        if (!dest.getParentFile().exists()) {
-            dest.getParentFile().mkdirs();
+        File dir = new File(uploadPath);
+        if (!dir.exists()) {
+            dir.mkdirs();
         }
 
+        File dest = new File(dir, newFileName);
+
         try {
-            file.transferTo(dest);
+            file.transferTo(dest.getAbsoluteFile());
             result.put("code", 200);
             result.put("msg", "上传成功");
             result.put("url", uploadUrlPrefix + newFileName);
             return result;
         } catch (IOException e) {
             result.put("code", 500);
-            result.put("msg", e.getMessage());
+            result.put("msg", "文件保存失败: " + e.getMessage());
             return result;
         }
     }
